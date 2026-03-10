@@ -1,0 +1,1732 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GR7 — Gerenciador de Instalações</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Outfit:wght@300;400;600;700;800&display=swap');
+
+:root {
+  --bg: #0d0d0d;
+  --s1: #141414;
+  --s2: #1a1a1a;
+  --s3: #222;
+  --s4: #2c2c2c;
+  --accent: #00e5a0;
+  --accent2: #ff6b35;
+  --blue: #4fc3f7;
+  --yellow: #ffd54f;
+  --red: #ff5252;
+  --text: #efefef;
+  --muted: #777;
+  --muted2: #444;
+  --border: #2a2a2a;
+  --font: 'Outfit', sans-serif;
+  --mono: 'IBM Plex Mono', monospace;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { height:100%; }
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* FIREBASE STATUS BAR */
+#fb-status-bar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 32px;
+  background: var(--s2);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  z-index: 200;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+}
+#fb-status-bar.connected { border-bottom-color: rgba(0,229,160,.3); }
+#fb-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--muted2);
+  display: inline-block;
+  margin-right: 6px;
+  transition: background .3s;
+}
+#fb-dot.online { background: var(--accent); box-shadow: 0 0 6px var(--accent); animation: pulse 2s infinite; }
+#fb-dot.error  { background: var(--red); }
+#fb-dot.syncing{ background: var(--yellow); animation: pulse .6s infinite; }
+@keyframes pulse {
+  0%,100% { opacity:1; } 50% { opacity:.4; }
+}
+#fb-sync-info { display: flex; align-items: center; gap: 8px; }
+#fb-users-online {
+  color: var(--accent);
+  background: rgba(0,229,160,.08);
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 9px;
+}
+.btn-config-firebase {
+  background: rgba(255,107,53,.1);
+  border: 1px solid rgba(255,107,53,.3);
+  color: var(--accent2);
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 3px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all .2s;
+}
+.btn-config-firebase:hover { background: rgba(255,107,53,.2); }
+
+/* ADJUST LAYOUT FOR STATUS BAR */
+body { padding-top: 32px; }
+#sidebar { height: calc(100vh - 32px); }
+
+/* SIDEBAR */
+#sidebar {
+  width: 280px;
+  min-width: 280px;
+  background: var(--s1);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-header {
+  padding: 20px 18px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.app-logo {
+  font-weight: 800;
+  font-size: 20px;
+  letter-spacing: -0.5px;
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.app-logo span { color: var(--text); }
+.app-sub {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 3px;
+  letter-spacing: 1px;
+}
+
+.sidebar-search {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.sidebar-search input {
+  width: 100%;
+  background: var(--s3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-family: var(--font);
+  font-size: 13px;
+  color: var(--text);
+  outline: none;
+  transition: border-color .2s;
+}
+.sidebar-search input:focus { border-color: var(--accent); }
+.sidebar-search input::placeholder { color: var(--muted); }
+
+.sidebar-actions { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+.btn-new {
+  width: 100%;
+  background: var(--accent);
+  color: #000;
+  border: none;
+  border-radius: 7px;
+  padding: 9px;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: opacity .2s;
+}
+.btn-new:hover { opacity: .85; }
+.btn-new:disabled { opacity: .4; cursor: not-allowed; }
+
+.client-list { flex: 1; overflow-y: auto; padding: 8px 0; }
+
+.client-item {
+  padding: 10px 16px;
+  cursor: pointer;
+  border-left: 3px solid transparent;
+  transition: all .15s;
+  position: relative;
+}
+.client-item:hover { background: var(--s2); }
+.client-item.active { background: var(--s2); border-left-color: var(--accent); }
+
+.client-item-name {
+  font-weight: 600;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 190px;
+}
+.client-item-meta {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.client-item-bar {
+  margin-top: 6px;
+  height: 3px;
+  background: var(--s4);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.client-item-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent);
+  transition: width .3s;
+}
+.client-item-pct {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--muted);
+  position: absolute;
+  right: 32px;
+  top: 12px;
+}
+.client-item-actions {
+  position: absolute;
+  right: 8px;
+  top: 10px;
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity .2s;
+}
+.client-item:hover .client-item-actions { opacity: 1; }
+.client-item-del, .client-item-edit {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: color .2s, background .2s;
+  color: var(--muted2);
+}
+.client-item-del:hover { color: var(--red); background: rgba(255,82,82,.1); }
+.client-item-edit:hover { color: var(--accent2); background: rgba(255,107,53,.1); }
+
+.sidebar-footer {
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+  display: flex;
+  justify-content: space-between;
+}
+
+/* MAIN */
+#main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+.main-topbar {
+  padding: 14px 28px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: var(--s1);
+  flex-wrap: wrap;
+}
+.main-title { font-size: 20px; font-weight: 800; letter-spacing: -.5px; }
+.main-date { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.main-computer {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--blue);
+  background: rgba(79,195,247,.08);
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+.main-funcionario {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--yellow);
+  background: rgba(255,213,79,.08);
+  padding: 3px 8px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.main-progress {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.main-progress-bar {
+  width: 140px;
+  height: 6px;
+  background: var(--s4);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.main-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), #00bcd4);
+  border-radius: 3px;
+  transition: width .4s ease;
+}
+.main-progress-text {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.main-content { flex: 1; overflow-y: auto; padding: 20px 28px; }
+
+/* SECTIONS */
+.section {
+  margin-bottom: 20px;
+  background: var(--s1);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.section-header {
+  padding: 11px 16px;
+  background: var(--s2);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  user-select: none;
+}
+.section-icon { font-size: 15px; }
+.section-title-text { font-weight: 700; font-size: 13.5px; flex: 1; }
+.section-count {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+  background: var(--s4);
+  padding: 2px 7px;
+  border-radius: 10px;
+}
+.section-toggle { color: var(--muted); font-size: 11px; transition: transform .2s; }
+.section.collapsed .section-toggle { transform: rotate(-90deg); }
+.section.collapsed .section-body { display: none; }
+.section-body { padding: 6px 0; }
+.section-del-btn {
+  background: none;
+  border: none;
+  color: var(--muted2);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 3px 6px;
+  border-radius: 4px;
+  opacity: 0;
+  transition: color .2s, background .2s, opacity .2s;
+  line-height: 1;
+}
+.section-header:hover .section-del-btn { opacity: 1; }
+.section-del-btn:hover { color: var(--red); background: rgba(255,82,82,.12); }
+
+/* TASK ITEMS */
+.task-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 8px 18px;
+  transition: background .15s;
+  cursor: pointer;
+  position: relative;
+}
+.task-item:hover { background: var(--s2); }
+.task-item.done .task-text { text-decoration: line-through; color: var(--muted); }
+.task-del-btn {
+  display: none;
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--muted2);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 3px 5px;
+  border-radius: 4px;
+  line-height: 1;
+  transition: color .2s, background .2s;
+}
+.task-item:hover .task-del-btn { display: flex; }
+.task-del-btn:hover { color: var(--red); background: rgba(255,82,82,.12); }
+
+.task-check {
+  width: 20px; height: 20px;
+  border: 2px solid var(--muted2);
+  border-radius: 5px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+  transition: all .2s;
+}
+.task-item.done .task-check { background: var(--accent); border-color: var(--accent); }
+.task-check-icon { display: none; font-size: 11px; color: #000; font-weight: 900; }
+.task-item.done .task-check-icon { display: block; }
+.task-text { font-size: 13.5px; line-height: 1.4; }
+
+/* RADIO */
+.radio-wrapper { padding: 8px 18px 2px; }
+.radio-question { font-size: 13.5px; font-weight: 600; margin-bottom: 4px; }
+.radio-group-inner { padding: 2px 0 6px 10px; display: flex; flex-direction: column; gap: 2px; }
+.radio-item {
+  display: flex; align-items: center; gap: 8px;
+  cursor: pointer; padding: 5px 8px;
+  border-radius: 5px; transition: background .15s;
+  font-size: 13px;
+}
+.radio-item:hover { background: var(--s2); }
+.radio-item.selected { color: var(--accent); }
+.radio-dot {
+  width: 16px; height: 16px;
+  border: 2px solid var(--muted2);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: all .2s;
+}
+.radio-item.selected .radio-dot { border-color: var(--accent); }
+.radio-dot-inner { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); opacity: 0; transition: opacity .2s; }
+.radio-item.selected .radio-dot-inner { opacity: 1; }
+
+/* ANYDESK */
+.anydesk-row { display: flex; align-items: center; gap: 10px; padding: 10px 18px; }
+.anydesk-label { font-family: var(--mono); font-size: 12px; color: var(--muted); white-space: nowrap; }
+.anydesk-input {
+  background: var(--s3);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 5px 10px;
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--accent2);
+  outline: none;
+  width: 200px;
+  transition: border-color .2s;
+}
+.anydesk-input:focus { border-color: var(--accent2); }
+
+/* EMPTY */
+.empty-state {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; height: 100%; gap: 14px; color: var(--muted);
+}
+.empty-icon { font-size: 56px; opacity: .3; }
+.empty-title { font-size: 20px; font-weight: 700; color: var(--muted); }
+.empty-sub { font-size: 13px; }
+
+/* MODAL */
+.modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.8); z-index: 100;
+  align-items: center; justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--s2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  width: 480px; max-width: 95vw;
+  padding: 28px;
+  animation: modalIn .2s ease;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+@keyframes modalIn {
+  from { opacity:0; transform: scale(.95) translateY(10px); }
+  to   { opacity:1; transform: scale(1) translateY(0); }
+}
+.modal-title { font-size: 20px; font-weight: 800; margin-bottom: 20px; }
+.form-group { margin-bottom: 14px; }
+.form-label { font-family: var(--mono); font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
+.form-input {
+  width: 100%; background: var(--s3); border: 1px solid var(--border);
+  border-radius: 7px; padding: 10px 12px;
+  font-family: var(--font); font-size: 14px; color: var(--text);
+  outline: none; transition: border-color .2s;
+}
+.form-input:focus { border-color: var(--accent); }
+.form-row { display: flex; gap: 12px; }
+.form-row .form-group { flex: 1; }
+.type-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
+.type-btn {
+  padding: 10px; border: 2px solid var(--border); border-radius: 7px;
+  background: var(--s3); color: var(--muted); cursor: pointer;
+  font-family: var(--font); font-size: 13px; font-weight: 600;
+  text-align: center; transition: all .2s;
+}
+.type-btn:hover { border-color: var(--accent); color: var(--text); }
+.type-btn.selected { border-color: var(--accent); color: var(--accent); background: rgba(0,229,160,.07); }
+.modal-actions { display: flex; gap: 10px; margin-top: 22px; }
+.btn-cancel {
+  flex: 1; padding: 10px; background: var(--s3); border: 1px solid var(--border);
+  border-radius: 7px; color: var(--muted); font-family: var(--font);
+  font-size: 14px; font-weight: 600; cursor: pointer; transition: all .2s;
+}
+.btn-cancel:hover { color: var(--text); border-color: var(--muted); }
+.btn-create {
+  flex: 2; padding: 10px; background: var(--accent); border: none;
+  border-radius: 7px; color: #000; font-family: var(--font);
+  font-size: 14px; font-weight: 800; cursor: pointer; transition: opacity .2s;
+}
+.btn-create:hover { opacity: .85; }
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* CONTEXT MENU */
+#ctx-menu {
+  display: none;
+  position: fixed;
+  z-index: 9999;
+  background: var(--s2);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 5px;
+  min-width: 200px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.6);
+  animation: ctxIn .12s ease;
+}
+@keyframes ctxIn {
+  from { opacity:0; transform: scale(.95) translateY(-4px); }
+  to   { opacity:1; transform: scale(1) translateY(0); }
+}
+#ctx-menu.open { display: block; }
+.ctx-header {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 4px 10px 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+.ctx-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13.5px;
+  font-weight: 500;
+  transition: background .15s, color .15s;
+  white-space: nowrap;
+}
+.ctx-item:hover { background: var(--s3); }
+.ctx-item.danger { color: var(--red); }
+.ctx-item.danger:hover { background: rgba(255,82,82,.12); }
+.ctx-item.success { color: var(--accent); }
+.ctx-item.success:hover { background: rgba(0,229,160,.08); }
+.ctx-item.warning { color: var(--yellow); }
+.ctx-item.warning:hover { background: rgba(255,213,79,.08); }
+.ctx-sep { height: 1px; background: var(--border); margin: 4px 0; }
+
+.btn-edit-client {
+  background: var(--s3);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--accent2);
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all .2s;
+  white-space: nowrap;
+}
+.btn-edit-client:hover { border-color: var(--accent2); background: rgba(255,107,53,.08); }
+
+.btn-delete-client {
+  background: var(--s3);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--red);
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all .2s;
+  white-space: nowrap;
+}
+.btn-delete-client:hover { border-color: var(--red); background: rgba(255,82,82,.1); }
+
+.modal-edit .modal-title { color: var(--accent2); }
+.modal-edit .btn-create { background: var(--accent2); color: #fff; }
+
+/* FIREBASE CONFIG MODAL */
+.modal-firebase .modal-title { color: var(--accent); }
+.fb-step {
+  background: var(--s3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.fb-step strong { color: var(--accent); }
+.fb-step code {
+  background: var(--s4);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--accent2);
+}
+.fb-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 3px 10px;
+  border-radius: 10px;
+  margin-left: 8px;
+}
+.fb-status-badge.ok { background: rgba(0,229,160,.1); color: var(--accent); border: 1px solid rgba(0,229,160,.2); }
+.fb-status-badge.fail { background: rgba(255,82,82,.1); color: var(--red); border: 1px solid rgba(255,82,82,.2); }
+
+/* LOADING OVERLAY */
+#loading-overlay {
+  position: fixed; inset: 0;
+  background: rgba(13,13,13,.85);
+  z-index: 300;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 14px;
+}
+#loading-overlay.hidden { display: none; }
+.loading-spinner {
+  width: 36px; height: 36px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+
+/* TOAST */
+#toast-container {
+  position: fixed;
+  bottom: 20px; right: 20px;
+  z-index: 9998;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+.toast {
+  background: var(--s2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-family: var(--mono);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: toastIn .3s ease;
+  pointer-events: all;
+  box-shadow: 0 4px 20px rgba(0,0,0,.4);
+}
+@keyframes toastIn {
+  from { opacity:0; transform: translateY(10px); }
+  to   { opacity:1; transform: translateY(0); }
+}
+.toast.success { border-color: rgba(0,229,160,.3); color: var(--accent); }
+.toast.error   { border-color: rgba(255,82,82,.3);  color: var(--red); }
+.toast.info    { border-color: rgba(79,195,247,.3);  color: var(--blue); }
+</style>
+</head>
+<body>
+
+<!-- LOADING OVERLAY -->
+<div id="loading-overlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text" id="loading-text">Conectando ao Firebase...</div>
+</div>
+
+<!-- STATUS BAR -->
+<div id="fb-status-bar">
+  <div id="fb-sync-info">
+    <span><span id="fb-dot"></span><span id="fb-status-text">Desconectado</span></span>
+    <span id="fb-users-online" style="display:none"></span>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center">
+    <span id="fb-last-sync" style="color:var(--muted2)"></span>
+    <button class="btn-config-firebase" onclick="openFirebaseModal()">⚙️ Config Firebase</button>
+  </div>
+</div>
+
+<div id="sidebar">
+  <div class="sidebar-header">
+    <div class="app-logo">⚡ GR7 <span>Instalações</span></div>
+    <div class="app-sub">GERENCIADOR DE CLIENTES</div>
+  </div>
+  <div class="sidebar-search">
+    <input type="text" id="search-input" placeholder="🔍  Buscar cliente..." oninput="renderSidebar()">
+  </div>
+  <div class="sidebar-actions">
+    <button class="btn-new" id="btn-new-client" onclick="openModal()">＋ Novo Cliente</button>
+  </div>
+  <div class="client-list" id="client-list"></div>
+  <div class="sidebar-footer">
+    <span id="footer-total">0 clientes</span>
+    <span id="footer-done">0 concluídos</span>
+  </div>
+</div>
+
+<div id="main">
+  <div id="topbar" class="main-topbar" style="display:none">
+    <div>
+      <div class="main-title" id="topbar-name"></div>
+      <div style="display:flex;gap:10px;margin-top:4px;align-items:center">
+        <div class="main-date" id="topbar-date"></div>
+        <div class="main-computer" id="topbar-computer"></div>
+        <div class="main-funcionario" id="topbar-func" style="display:none">👤 <span id="topbar-func-name"></span></div>
+      </div>
+    </div>
+    <div class="main-progress">
+      <div class="main-progress-bar"><div class="main-progress-fill" id="main-prog-fill" style="width:0%"></div></div>
+      <div class="main-progress-text" id="main-prog-text">0%</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="btn-edit-client" onclick="openEditModal()">✏️ Editar</button>
+      <button class="btn-delete-client" onclick="deleteActiveClient()">🗑️ Excluir</button>
+    </div>
+  </div>
+  <div id="main-content" class="main-content">
+    <div class="empty-state">
+      <div class="empty-icon">🖥️</div>
+      <div class="empty-title">Nenhum cliente selecionado</div>
+      <div class="empty-sub">Selecione um cliente ou crie um novo</div>
+    </div>
+  </div>
+</div>
+
+<!-- NEW CLIENT MODAL -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-title">🖥️ Novo Cliente</div>
+    <div class="form-group">
+      <div class="form-label">Nome do Cliente</div>
+      <input class="form-input" id="m-name" placeholder="Ex: WF Frutaria" />
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <div class="form-label">Data</div>
+        <input class="form-input" id="m-date" type="date" />
+      </div>
+      <div class="form-group">
+        <div class="form-label">Nome do Computador</div>
+        <input class="form-input" id="m-computer" placeholder="DESKTOP-XXXXXXX" />
+      </div>
+    </div>
+    <div class="form-group">
+      <div class="form-label">👤 Funcionário Responsável</div>
+      <input class="form-input" id="m-func" placeholder="Nome de quem fez a instalação" />
+    </div>
+    <div class="form-group">
+      <div class="form-label">Tipo de Instalação</div>
+      <div class="type-grid">
+        <div class="type-btn selected" id="type-servidor" onclick="selectType('Servidor')">🖥️ Servidor</div>
+        <div class="type-btn" id="type-nfce" onclick="selectType('NFCe')">🧾 NFCe / Caixa</div>
+      </div>
+    </div>
+    <div class="form-group" id="nfce-num-group" style="display:none">
+      <div class="form-label">Número do Caixa</div>
+      <input class="form-input" id="m-nfce-num" placeholder="Ex: 04" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+      <button class="btn-create" onclick="createClient()">Criar Cliente</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONTEXT MENU -->
+<div id="ctx-menu">
+  <div class="ctx-header" id="ctx-label">Tarefa</div>
+  <div id="ctx-items"></div>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="modal-edit">
+  <div class="modal modal-edit">
+    <div class="modal-title">✏️ Editar Cliente</div>
+    <div class="form-group">
+      <div class="form-label">Nome do Cliente</div>
+      <input class="form-input" id="e-name" placeholder="Ex: WF Frutaria" />
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <div class="form-label">Data</div>
+        <input class="form-input" id="e-date" type="date" />
+      </div>
+      <div class="form-group">
+        <div class="form-label">Nome do Computador</div>
+        <input class="form-input" id="e-computer" placeholder="DESKTOP-XXXXXXX" />
+      </div>
+    </div>
+    <div class="form-group">
+      <div class="form-label">👤 Funcionário Responsável</div>
+      <input class="form-input" id="e-func" placeholder="Nome de quem fez a instalação" />
+    </div>
+    <div class="form-group" id="e-nfce-group" style="display:none">
+      <div class="form-label">Número do Caixa (NFCe)</div>
+      <input class="form-input" id="e-nfce-num" placeholder="Ex: 04" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeEditModal()">Cancelar</button>
+      <button class="btn-create" onclick="saveEdit()">💾 Salvar Alterações</button>
+    </div>
+  </div>
+</div>
+
+<!-- FIREBASE CONFIG MODAL -->
+<div class="modal-overlay" id="modal-firebase">
+  <div class="modal modal-firebase" style="width:560px">
+    <div class="modal-title">🔥 Configurar Firebase</div>
+
+    <div class="fb-step">
+      <strong>Passo 1 — Criar projeto no Firebase</strong><br>
+      Acesse <a href="https://console.firebase.google.com" target="_blank" style="color:var(--blue)">console.firebase.google.com</a> → Clique em <strong>Adicionar projeto</strong> → Dê um nome (ex: <code>gr7-instalacoes</code>) → Desative Google Analytics → Criar projeto.
+    </div>
+
+    <div class="fb-step">
+      <strong>Passo 2 — Criar banco Realtime Database</strong><br>
+      No menu lateral clique em <strong>Build → Realtime Database</strong> → <strong>Criar banco de dados</strong> → Escolha a região <code>us-central1</code> → No modo de segurança, selecione <strong>Modo de teste</strong> → Ativar.
+    </div>
+
+    <div class="fb-step">
+      <strong>Passo 3 — Registrar App Web</strong><br>
+      No menu lateral, clique em ⚙️ <strong>Configurações do projeto</strong> → Role até <strong>Seus apps</strong> → Clique em <strong>&lt;/&gt;</strong> (Web) → Dê um nome → <strong>Registrar app</strong>. Copie os dados do <code>firebaseConfig</code> e cole abaixo.
+    </div>
+
+    <div class="fb-step">
+      <strong>Passo 4 — Colar configuração abaixo e salvar</strong><br>
+      As configurações ficam salvas neste navegador. Cada pessoa da equipe precisa fazer isso uma vez.
+    </div>
+
+    <div class="form-group" style="margin-top:14px">
+      <div class="form-label">API Key</div>
+      <input class="form-input" id="fb-api-key" placeholder="AIzaSy..." />
+    </div>
+    <div class="form-group">
+      <div class="form-label">Auth Domain</div>
+      <input class="form-input" id="fb-auth-domain" placeholder="seu-projeto.firebaseapp.com" />
+    </div>
+    <div class="form-group">
+      <div class="form-label">Database URL</div>
+      <input class="form-input" id="fb-db-url" placeholder="https://seu-projeto-default-rtdb.firebaseio.com" />
+    </div>
+    <div class="form-group">
+      <div class="form-label">Project ID</div>
+      <input class="form-input" id="fb-project-id" placeholder="seu-projeto" />
+    </div>
+    <div class="form-group">
+      <div class="form-label">App ID</div>
+      <input class="form-input" id="fb-app-id" placeholder="1:123456789:web:abc..." />
+    </div>
+
+    <div id="fb-test-result" style="display:none;margin-top:8px;"></div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeFirebaseModal()">Fechar</button>
+      <button class="btn-create" style="background:var(--blue);color:#000" onclick="testFirebaseConfig()">🔌 Testar Conexão</button>
+      <button class="btn-create" onclick="saveFirebaseConfig()">💾 Salvar e Conectar</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast-container"></div>
+
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getDatabase, ref, set, get, onValue, remove, update, serverTimestamp, onDisconnect, push } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js';
+
+// ── CONFIG STORAGE ─────────────────────────────────────────
+const FB_CONFIG_KEY = 'gr7_firebase_config';
+let fbApp = null, db = null, fbConnected = false;
+let unsubscribeClients = null;
+
+function loadFbConfig() {
+  try { const d = localStorage.getItem(FB_CONFIG_KEY); return d ? JSON.parse(d) : null; }
+  catch(e) { return null; }
+}
+function saveFbConfigLocal(cfg) { localStorage.setItem(FB_CONFIG_KEY, JSON.stringify(cfg)); }
+
+// ── FIREBASE INIT ──────────────────────────────────────────
+async function initFirebase(config) {
+  try {
+    if (fbApp) {
+      // Already initialized, just reconnect
+    } else {
+      fbApp = initializeApp(config);
+    }
+    db = getDatabase(fbApp);
+
+    // Test connection
+    const connRef = ref(db, '.info/connected');
+    return new Promise((resolve) => {
+      onValue(connRef, (snap) => {
+        if (snap.val() === true) {
+          setFbStatus('online');
+          resolve(true);
+        }
+      }, { onlyOnce: true });
+      // Timeout fallback
+      setTimeout(() => resolve(false), 8000);
+    });
+  } catch(e) {
+    console.error('Firebase init error:', e);
+    setFbStatus('error');
+    return false;
+  }
+}
+
+function setFbStatus(status) {
+  const dot = document.getElementById('fb-dot');
+  const txt = document.getElementById('fb-status-text');
+  const bar = document.getElementById('fb-status-bar');
+  dot.className = status;
+  fbConnected = status === 'online';
+  if (status === 'online') {
+    txt.textContent = 'Conectado ao Firebase';
+    bar.classList.add('connected');
+  } else if (status === 'syncing') {
+    txt.textContent = 'Sincronizando...';
+  } else if (status === 'error') {
+    txt.textContent = 'Erro de conexão';
+    bar.classList.remove('connected');
+  } else {
+    txt.textContent = 'Desconectado (modo local)';
+    bar.classList.remove('connected');
+  }
+}
+
+// ── DATA LAYER ─────────────────────────────────────────────
+async function fbSaveClients(clientsData) {
+  if (!db || !fbConnected) {
+    save_local(); return;
+  }
+  setFbStatus('syncing');
+  try {
+    await set(ref(db, 'gr7/clients'), clientsData);
+    setFbStatus('online');
+    const now = new Date().toLocaleTimeString('pt-BR');
+    document.getElementById('fb-last-sync').textContent = `Sync: ${now}`;
+  } catch(e) {
+    console.error('Firebase save error:', e);
+    save_local();
+    setFbStatus('error');
+    showToast('Erro ao salvar no Firebase. Dados salvos localmente.', 'error');
+  }
+}
+
+async function fbLoadClients() {
+  if (!db || !fbConnected) {
+    load_local(); return;
+  }
+  try {
+    const snap = await get(ref(db, 'gr7/clients'));
+    if (snap.exists()) {
+      clients = snap.val() || [];
+      if (!Array.isArray(clients)) clients = Object.values(clients);
+    } else {
+      // Try loading local and migrating
+      load_local();
+      if (clients.length > 0) {
+        showToast('Dados locais encontrados! Migrando para Firebase...', 'info');
+        await fbSaveClients(clients);
+      }
+    }
+  } catch(e) {
+    console.error('Firebase load error:', e);
+    load_local();
+  }
+}
+
+function subscribeToChanges() {
+  if (!db || !fbConnected) return;
+  if (unsubscribeClients) unsubscribeClients();
+
+  const clientsRef = ref(db, 'gr7/clients');
+  unsubscribeClients = onValue(clientsRef, (snap) => {
+    if (snap.exists()) {
+      const newData = snap.val() || [];
+      const arr = Array.isArray(newData) ? newData : Object.values(newData);
+      // Only update if data actually changed
+      if (JSON.stringify(arr) !== JSON.stringify(clients)) {
+        clients = arr;
+        renderSidebar();
+        renderMain();
+        const now = new Date().toLocaleTimeString('pt-BR');
+        document.getElementById('fb-last-sync').textContent = `Sync: ${now}`;
+      }
+    }
+  });
+}
+
+// ── LOCAL FALLBACK ─────────────────────────────────────────
+const STORAGE_KEY = 'gr7_v3';
+function save_local() { localStorage.setItem(STORAGE_KEY, JSON.stringify(clients)); }
+function load_local() {
+  try { const d = localStorage.getItem(STORAGE_KEY); if (d) clients = JSON.parse(d); }
+  catch(e) { clients = []; }
+}
+
+// ── UNIFIED SAVE ──────────────────────────────────────────
+window.save = async function() {
+  save_local(); // Always save locally too
+  await fbSaveClients(clients);
+}
+
+// ── SECTION TEMPLATES ─────────────────────────────────────
+function mkCheck(id, label) { return { id, type:'check', label, done:false }; }
+function mkRadio(id, label, options) { return { id, type:'radio', label, options, selected:null }; }
+function mkAnydesk(id) { return { id, type:'anydesk', label:'AnyDesk', value:'' }; }
+
+window.buildServidor = function(cid) {
+  const p = cid;
+  return [
+    { id:`${p}g0`, title:'Informações Gerais', icon:'📋', collapsed:false, items:[
+      mkAnydesk(`${p}g0_ad`),
+      mkRadio(`${p}g0_r1`, 'Mudou o nome do computador para SERVIDOR?', ['Sim','Não']),
+    ]},
+    { id:`${p}g1`, title:'Primeiros Passos', icon:'🚀', collapsed:false, items:[
+      mkCheck(`${p}g1_1`, 'Instalou TeamViewer'),
+      mkCheck(`${p}g1_2`, 'Colocou para inicializar com o Windows'),
+      mkCheck(`${p}g1_3`, 'Colocou a senha: #Srv1234'),
+      mkCheck(`${p}g1_4`, 'Pasta GR7 no Acesso Rápido'),
+      mkCheck(`${p}g1_5`, 'Marcar no CONFIG.INI dentro da pasta GR7 como Servidor=1'),
+      mkCheck(`${p}g1_6`, 'Colocar o Caminho_Servidor= no CONFIG.INI'),
+      mkCheck(`${p}g1_7`, 'Configurar Nº de casas decimais no Painel de Controle'),
+      mkCheck(`${p}g1_8`, 'Alterar configurações de controle de usuário no Painel de Controle'),
+      mkCheck(`${p}g1_9`, 'Configurar o Explorer para avisar antes de excluir na lixeira'),
+      mkCheck(`${p}g1_10`, 'Configurar o Explorer para mostrar itens ocultos'),
+      mkCheck(`${p}g1_11`, 'Configurar o Explorer para mostrar extensões de arquivos'),
+      mkCheck(`${p}g1_12`, 'Tirar suspensão de tela'),
+      mkCheck(`${p}g1_13`, 'Mudar plano de energia'),
+      mkCheck(`${p}g1_14`, 'Desligar otimização de entrega em Atualizações'),
+      mkCheck(`${p}g1_15`, 'Desligar aplicativos em segundo plano em Privacidade'),
+      mkCheck(`${p}g1_16`, 'Instalar programa para reiniciar (WASSetup_1.7.8.97)'),
+    ]},
+    { id:`${p}g2`, title:'MySQL', icon:'🐬', collapsed:false, items:[
+      mkCheck(`${p}g2_1`, 'MySQL Server 5.7.38'),
+      mkCheck(`${p}g2_2`, 'MySQL Manager'),
+      mkCheck(`${p}g2_3`, 'MySQL Administrator'),
+    ]},
+    { id:`${p}g3`, title:'Compartilhamento de Pastas e Servidor', icon:'📂', collapsed:false, items:[
+      mkCheck(`${p}g3_1`, 'GR7/GR7/ATUALIZACAO'),
+      mkCheck(`${p}g3_2`, 'GR7/GR7/BACKUP'),
+      mkCheck(`${p}g3_3`, 'GR7/GR7/CFE'),
+      mkCheck(`${p}g3_4`, 'GR7/GR7/NFE/ARQUIVOS'),
+      mkCheck(`${p}g3_5`, 'GR7/GR7/NFE ENTRADA'),
+      mkCheck(`${p}g3_6`, 'Ativou compartilhamento avançado na central de compartilhamento'),
+      mkCheck(`${p}g3_7`, 'Ativou recursos de rede como SMP 1.0'),
+    ]},
+    { id:`${p}g4`, title:'Diretórios no Retaguarda', icon:'🗂️', collapsed:false, items:[
+      mkCheck(`${p}g4_1`, '\\\\SERVIDOR\\NFE ENTRADA'),
+      mkCheck(`${p}g4_2`, '\\\\SERVIDOR\\ARQUIVOS'),
+      mkCheck(`${p}g4_3`, '\\\\SERVIDOR\\ATUALIZACAO'),
+      mkCheck(`${p}g4_4`, '\\\\SERVIDOR\\BACKUP'),
+      mkCheck(`${p}g4_5`, '\\\\SERVIDOR\\CFE'),
+    ]},
+    { id:`${p}g5`, title:'Base e Registro', icon:'💾', collapsed:false, items:[
+      mkRadio(`${p}g5_r1`, 'Restaurou a base do cliente', ['Sim','Ainda não']),
+      mkRadio(`${p}g5_r2`, 'Colocou o registro do cliente', ['Na pasta atualizacao','Na pasta raiz da GR7']),
+      mkRadio(`${p}g5_r3`, 'Colocou o CNPJ no Demo.ini', ['Sim','Não']),
+      mkRadio(`${p}g5_r4`, 'Certificado (emissão de nota fiscal)', ['Na pasta GR7/GR7/ATUALIZACAO/NFE','Não precisa']),
+    ]},
+    { id:`${p}g6`, title:'Atalhos na Área de Trabalho', icon:'🖱️', collapsed:false, items:[
+      mkCheck(`${p}g6_1`, 'MySQL Administrator → ADMIN'),
+      mkCheck(`${p}g6_2`, 'MySQL Manager → MANAGER'),
+      mkCheck(`${p}g6_3`, 'AUTOMACAO → GR7 RETAGUARDA'),
+      mkCheck(`${p}g6_4`, 'GR7_Iniciar → GR7 ATUALIZA'),
+      mkCheck(`${p}g6_5`, 'PRINCIPAL'),
+      mkCheck(`${p}g6_6`, 'ATUALIZACAO_FTP → GR7 FTP'),
+      mkCheck(`${p}g6_7`, 'WEBCHARTS'),
+      mkCheck(`${p}g6_8`, 'SERVER MOBILE (caso use app GR7 PEDIDOS)'),
+      mkCheck(`${p}g6_9`, 'Criar pasta GR7 APP'),
+      mkCheck(`${p}g6_10`, 'GR7_FRENTE → GR7 VENDAS (caso servidor seja caixa)'),
+      mkCheck(`${p}g6_11`, 'FRENTE_DEMO → DEMONSTRACAO (caso servidor seja caixa)'),
+      mkCheck(`${p}g6_12`, 'Pasta Inicializar na área de trabalho'),
+    ]},
+    { id:`${p}g7`, title:'Barra de Tarefas', icon:'📌', collapsed:false, items:[
+      mkCheck(`${p}g7_1`, 'GR7 VENDAS (caso seja caixa também)'),
+      mkCheck(`${p}g7_2`, 'DEMONSTRACAO (caso seja caixa também)'),
+      mkCheck(`${p}g7_3`, 'GR7 RETAGUARDA'),
+      mkCheck(`${p}g7_4`, 'ATUALIZA GR7'),
+      mkCheck(`${p}g7_5`, 'MANAGER'),
+      mkCheck(`${p}g7_6`, 'ADMIN'),
+      mkCheck(`${p}g7_7`, 'CHROME'),
+      mkCheck(`${p}g7_8`, 'WINDOWS EXPLORER'),
+    ]},
+    { id:`${p}g8`, title:'Periféricos', icon:'🖨️', collapsed:false, items:[
+      mkCheck(`${p}g8_1`, 'Impressora'),
+      mkCheck(`${p}g8_2`, 'SAT'),
+      mkCheck(`${p}g8_3`, 'Balança'),
+      mkCheck(`${p}g8_4`, 'Alterou o CONFIG.INI'),
+      mkCheck(`${p}g8_5`, 'Não precisa'),
+    ]},
+    { id:`${p}g9`, title:'Verificador (Windows 10/11)', icon:'🔍', collapsed:false, items:[
+      mkCheck(`${p}g9_1`, 'Colocou o Verificador.exe na pasta Inicializar'),
+      mkCheck(`${p}g9_2`, 'Mudou o CONFIG.INI dentro da pasta do Verificador'),
+    ]},
+    { id:`${p}g10`, title:'Windows 7 (se aplicável)', icon:'🪟', collapsed:true, items:[
+      mkCheck(`${p}g10_1`, 'Colocar WEBCHARTS na pasta Inicializar'),
+      mkCheck(`${p}g10_2`, 'Colocar SERVER MOBILE na pasta Inicializar (caso use APP)'),
+      mkCheck(`${p}g10_3`, 'Colocar GR7-FTP no Inicializar'),
+      mkCheck(`${p}g10_4`, 'Colocar GR7 ATUALIZA no Inicializar'),
+    ]},
+    { id:`${p}g11`, title:'Backup', icon:'💿', collapsed:false, items:[
+      mkCheck(`${p}g11_1`, 'Colocou senha 12345678'),
+      mkRadio(`${p}g11_r1`, 'Configurou a rotina de Backup?', ['Sim','Ainda não']),
+    ]},
+    { id:`${p}g12`, title:'Testes Finais', icon:'✅', collapsed:false, items:[
+      mkCheck(`${p}g12_1`, 'Backup está sendo feito'),
+      mkCheck(`${p}g12_2`, 'Vender no frente (caso seja caixa)'),
+      mkCheck(`${p}g12_3`, 'Testar o Retaguarda'),
+      mkCheck(`${p}g12_4`, 'Testar o verificador'),
+    ]},
+  ];
+}
+
+window.buildNFCe = function(cid, num) {
+  const p = cid;
+  return [
+    { id:`${p}n0`, title:'Informações Gerais', icon:'📋', collapsed:false, items:[
+      mkAnydesk(`${p}n0_ad`),
+      mkRadio(`${p}n0_r1`, 'Mudou o nome do computador?', ['Sim','Não / Não precisa']),
+    ]},
+    { id:`${p}n1`, title:'Acesso Remoto', icon:'🌐', collapsed:false, items:[
+      mkCheck(`${p}n1_1`, 'Cliente baixou o AnyDesk e enviou foto do código'),
+      mkCheck(`${p}n1_2`, 'Criou senha de acesso não supervisionado: #Srv1234'),
+      mkCheck(`${p}n1_3`, 'Instalou AnyDesk no cliente (tutorial)'),
+      mkCheck(`${p}n1_4`, 'Salvou AnyDesk no Master'),
+      mkCheck(`${p}n1_5`, 'Instalou o Master Remote no cliente'),
+      mkCheck(`${p}n1_6`, 'Adicionou descrição e observações no Master Control'),
+    ]},
+    { id:`${p}n2`, title:'Transferência de Arquivos GR7', icon:'📂', collapsed:false, items:[
+      mkCheck(`${p}n2_1`, 'Abriu o botão de transferência no Master'),
+      mkCheck(`${p}n2_2`, 'Acessou pasta GR7_Instalação no Publico'),
+      mkCheck(`${p}n2_3`, 'Criou pasta GR7 no Disco C'),
+      mkCheck(`${p}n2_4`, 'Enviou arquivos GR7 para pasta criada'),
+      mkCheck(`${p}n2_5`, 'Acompanhou barra de progresso até concluir'),
+    ]},
+    { id:`${p}n3`, title:'Otimização do Windows', icon:'⚙️', collapsed:false, items:[
+      mkCheck(`${p}n3_1`, 'Ativou Serviços de Impressão e Documentos'),
+      mkCheck(`${p}n3_2`, 'Ativou Suporte SMB 1.0/CIFS (obrigatório Win 11)'),
+      mkCheck(`${p}n3_3`, 'Configurou casas decimais = 3 no Painel de Controle'),
+      mkCheck(`${p}n3_4`, 'Lixeira: ativou confirmação antes de excluir'),
+      mkCheck(`${p}n3_5`, 'Explorer: ativou extensões de nomes de arquivos'),
+      mkCheck(`${p}n3_6`, 'Explorer: ativou exibição de itens ocultos'),
+    ]},
+    { id:`${p}n4`, title:'Área de Trabalho e Atalhos', icon:'🖱️', collapsed:false, items:[
+      mkCheck(`${p}n4_1`, 'Criou pasta GR7 APPS na Área de Trabalho'),
+      mkCheck(`${p}n4_2`, 'Criou atalho da pasta Inicializar na Área de Trabalho'),
+      mkCheck(`${p}n4_3`, 'Renomeou atalho para GR7 Inicializar'),
+      mkCheck(`${p}n4_4`, 'automacao.exe → GR7 RETAGUARDA'),
+      mkCheck(`${p}n4_5`, 'GR7_Frente.exe → GR7 VENDAS'),
+      mkCheck(`${p}n4_6`, 'Frente_demo.exe → DEMONSTRACAO'),
+      mkCheck(`${p}n4_7`, 'GR7_Iniciar.exe → ATUALIZA GR7'),
+      mkCheck(`${p}n4_8`, 'Atalho Suporte GR7'),
+    ]},
+    { id:`${p}n5`, title:'Barra de Tarefas', icon:'📌', collapsed:false, items:[
+      mkCheck(`${p}n5_1`, 'GR7 RETAGUARDA fixado na barra'),
+      mkCheck(`${p}n5_2`, 'GR7 VENDAS fixado na barra'),
+      mkCheck(`${p}n5_3`, 'DEMONSTRACAO fixado na barra'),
+      mkCheck(`${p}n5_4`, 'ATUALIZA GR7 fixado na barra'),
+      mkCheck(`${p}n5_5`, 'Chrome/Navegador fixado na barra'),
+      mkCheck(`${p}n5_6`, 'Windows Explorer fixado na barra'),
+    ]},
+    { id:`${p}n6`, title:'Compartilhamento de Rede', icon:'🔗', collapsed:false, items:[
+      mkCheck(`${p}n6_1`, 'Abriu configurações de Rede e Internet'),
+      mkCheck(`${p}n6_2`, 'Ajustou Central de Rede → compartilhamento avançado'),
+      mkCheck(`${p}n6_3`, 'Configurou Rede Particular'),
+      mkCheck(`${p}n6_4`, 'Configurou Rede Convidado/Público'),
+      mkCheck(`${p}n6_5`, 'Configurou Todas as redes'),
+    ]},
+    { id:`${p}n7`, title:'Acesso Rápido e Registro', icon:'💾', collapsed:false, items:[
+      mkCheck(`${p}n7_1`, 'Fixou C:\\GR7\\GR7 no Acesso Rápido'),
+      mkCheck(`${p}n7_2`, 'Fixou GR7 APPS no Acesso Rápido'),
+      mkCheck(`${p}n7_3`, 'Adicionou máquina no Registro'),
+      mkCheck(`${p}n7_4`, 'Colocou registro na pasta \\\\servidor\\atualizacao'),
+    ]},
+    { id:`${p}n8`, title:'Config.ini e Demo.ini', icon:'📝', collapsed:false, items:[
+      mkCheck(`${p}n8_1`, 'Demo.ini: preencheu CNPJ do cliente'),
+      mkCheck(`${p}n8_2`, 'Demo.ini: configurou Demo_imp (S ou N)'),
+      mkCheck(`${p}n8_3`, 'Config.ini: Servidor=0'),
+      mkCheck(`${p}n8_4`, 'Config.ini: Caminho_Servidor= nome do servidor'),
+      mkCheck(`${p}n8_5`, 'Config.ini: Base_Dados=automacao'),
+      mkCheck(`${p}n8_6`, 'Config.ini: MySQL_Porta=3306'),
+    ]},
+    { id:`${p}n9`, title:'Atualização e Inicialização', icon:'🔄', collapsed:false, items:[
+      mkCheck(`${p}n9_1`, 'Rodou o ATUALIZA GR7'),
+      mkCheck(`${p}n9_2`, 'Sem erro "Diretório não encontrado" (ou resolveu credenciais)'),
+      mkCheck(`${p}n9_3`, 'Copiou ATUALIZA GR7 para pasta GR7 Inicializar'),
+    ]},
+    { id:`${p}n10`, title:'Finalização', icon:'✅', collapsed:false, items:[
+      mkCheck(`${p}n10_1`, 'Instalou periféricos (TEF / Impressora / Balança) se houver'),
+      mkCheck(`${p}n10_2`, 'Instalou fonte para relatórios (se usar Retaguarda)'),
+      mkCheck(`${p}n10_3`, 'Criou exceções no Windows Defender'),
+      mkCheck(`${p}n10_4`, 'Configurou Credenciais de Rede do Windows'),
+      mkCheck(`${p}n10_5`, 'Testou venda completa no GR7 VENDAS'),
+      mkCheck(`${p}n10_6`, 'Testou Retaguarda'),
+      mkRadio(`${p}n10_r1`, 'Instalação concluída?', ['Sim, tudo ok','Pendências']),
+    ]},
+  ];
+}
+
+// ── PROGRESS ──────────────────────────────────────────────
+window.getProgress = function(client) {
+  let total = 0, done = 0;
+  client.sections.forEach(sec => sec.items.forEach(it => {
+    if (it.type === 'check') { total++; if (it.done) done++; }
+    if (it.type === 'radio') { total++; if (it.selected !== null) done++; }
+  }));
+  return { total, done, pct: total ? Math.round(done/total*100) : 0 };
+}
+
+function globalStats() {
+  return {
+    total: clients.length,
+    done: clients.filter(c => getProgress(c).pct === 100).length
+  };
+}
+
+// ── SIDEBAR ───────────────────────────────────────────────
+window.renderSidebar = function() {
+  const q = document.getElementById('search-input').value.toLowerCase();
+  const filtered = clients.filter(c => c.name.toLowerCase().includes(q));
+  document.getElementById('client-list').innerHTML = filtered.map(c => {
+    const { pct } = getProgress(c);
+    const active = c.id === activeId ? ' active' : '';
+    return `<div class="client-item${active}" onclick="selectClient('${c.id}')">
+      <div class="client-item-name">${c.name}</div>
+      <div class="client-item-meta">${c.type} · ${c.date}${c.funcionario ? ' · 👤 '+c.funcionario : ''}</div>
+      <div class="client-item-bar"><div class="client-item-bar-fill" style="width:${pct}%"></div></div>
+      <div class="client-item-pct">${pct}%</div>
+      <div class="client-item-actions">
+        <button class="client-item-edit" onclick="openEditModalFor(event,'${c.id}')" title="Editar">✏️</button>
+        <button class="client-item-del" onclick="deleteClient(event,'${c.id}')" title="Excluir">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
+  const { total, done } = globalStats();
+  document.getElementById('footer-total').textContent = `${total} clientes`;
+  document.getElementById('footer-done').textContent = `${done} concluídos`;
+}
+
+// ── MAIN ──────────────────────────────────────────────────
+window.renderMain = function() {
+  const client = clients.find(c => c.id === activeId);
+  const topbar = document.getElementById('topbar');
+  const content = document.getElementById('main-content');
+  if (!client) {
+    topbar.style.display = 'none';
+    content.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">🖥️</div>
+      <div class="empty-title">Nenhum cliente selecionado</div>
+      <div class="empty-sub">Selecione um cliente ou crie um novo</div>
+    </div>`;
+    return;
+  }
+  topbar.style.display = 'flex';
+  document.getElementById('topbar-name').textContent = client.name;
+  document.getElementById('topbar-date').textContent = client.date;
+  document.getElementById('topbar-computer').textContent = client.computer || '—';
+  const funcEl = document.getElementById('topbar-func');
+  const funcName = document.getElementById('topbar-func-name');
+  if (client.funcionario) {
+    funcEl.style.display = 'flex';
+    funcName.textContent = client.funcionario;
+  } else {
+    funcEl.style.display = 'none';
+  }
+  const { pct, done, total } = getProgress(client);
+  document.getElementById('main-prog-fill').style.width = pct + '%';
+  document.getElementById('main-prog-text').textContent = `${done}/${total} (${pct}%)`;
+
+  content.innerHTML = client.sections.map(sec => {
+    const body = sec.items.map(renderItem).join('');
+    const cnt = secCount(sec);
+    return `<div class="section ${sec.collapsed?'collapsed':''}" id="sec_${sec.id}">
+      <div class="section-header" onclick="toggleSection('${sec.id}')" oncontextmenu="showCtxSection(event,'${sec.id}')">
+        <span class="section-icon">${sec.icon}</span>
+        <span class="section-title-text">${sec.title}</span>
+        <span class="section-count">${cnt}</span>
+        <button class="section-del-btn" onclick="deleteSection(event,'${sec.id}')" title="Excluir seção">🗑</button>
+        <span class="section-toggle">▾</span>
+      </div>
+      <div class="section-body">${body}</div>
+    </div>`;
+  }).join('');
+}
+
+function secCount(sec) {
+  let d=0,t=0;
+  sec.items.forEach(it => {
+    if (it.type==='check'){t++;if(it.done)d++;}
+    if (it.type==='radio'){t++;if(it.selected!==null)d++;}
+  });
+  return `${d}/${t}`;
+}
+
+function renderItem(it) {
+  if (it.type === 'check') return `
+    <div class="task-item ${it.done?'done':''}" onclick="toggleCheck('${it.id}')" oncontextmenu="showCtxTask(event,'${it.id}')">
+      <div class="task-check"><span class="task-check-icon">✓</span></div>
+      <span class="task-text">${it.label}</span>
+    </div>`;
+  if (it.type === 'radio') {
+    const opts = it.options.map((o,i) => `
+      <div class="radio-item ${it.selected===i?'selected':''}" onclick="selectRadio('${it.id}',${i})">
+        <div class="radio-dot"><div class="radio-dot-inner"></div></div>
+        <span>${o}</span>
+      </div>`).join('');
+    return `<div class="radio-wrapper" oncontextmenu="showCtxTask(event,'${it.id}')">
+      <div class="radio-question">${it.label}</div>
+      <div class="radio-group-inner">${opts}</div>
+    </div>`;
+  }
+  if (it.type === 'anydesk') return `
+    <div class="anydesk-row">
+      <span class="anydesk-label">AnyDesk:</span>
+      <input class="anydesk-input" value="${it.value||''}" placeholder="ID do AnyDesk"
+        onchange="updateAnydesk('${it.id}',this.value)" onclick="event.stopPropagation()">
+    </div>`;
+  return '';
+}
+
+// ── CONTEXT MENU ──────────────────────────────────────────
+const ctxMenu = document.getElementById('ctx-menu');
+let ctxTargetId = null;
+let ctxTargetType = null;
+
+function showCtx(e, id, type, label, extraItems) {
+  e.preventDefault();
+  e.stopPropagation();
+  ctxTargetId = id;
+  ctxTargetType = type;
+  document.getElementById('ctx-label').textContent = label;
+  document.getElementById('ctx-items').innerHTML = extraItems;
+  const x = e.clientX, y = e.clientY;
+  ctxMenu.classList.add('open');
+  const w = ctxMenu.offsetWidth, h = ctxMenu.offsetHeight;
+  ctxMenu.style.left = (x + w > window.innerWidth  ? x - w : x) + 'px';
+  ctxMenu.style.top  = (y + h > window.innerHeight ? y - h : y) + 'px';
+}
+
+window.showCtxTask = function(e, itemId) {
+  const c = clients.find(x => x.id === activeId); if (!c) return;
+  let item = null;
+  for (const s of c.sections) for (const it of s.items) if (it.id === itemId) { item = it; break; }
+  if (!item) return;
+  const isDone = item.type === 'check' ? item.done : false;
+  const label = item.label || 'Tarefa';
+  showCtx(e, itemId, 'task', label, `
+    ${item.type === 'check' ? `
+    <div class="ctx-item success" onclick="ctxToggleCheck()">
+      ${isDone ? '↩️ Desmarcar tarefa' : '✅ Marcar como concluída'}
+    </div>` : ''}
+    <div class="ctx-sep"></div>
+    <div class="ctx-item danger" onclick="ctxDeleteItem()">🗑️ Excluir tarefa</div>
+  `);
+}
+
+window.showCtxSection = function(e, secId) {
+  const c = clients.find(x => x.id === activeId); if (!c) return;
+  const sec = c.sections.find(s => s.id === secId); if (!sec) return;
+  showCtx(e, secId, 'section', sec.title, `
+    <div class="ctx-item warning" onclick="ctxCollapseSection()">
+      ${sec.collapsed ? '📂 Expandir seção' : '📁 Recolher seção'}
+    </div>
+    <div class="ctx-item success" onclick="ctxMarkAllSection()">✅ Marcar todas as tarefas</div>
+    <div class="ctx-item" onclick="ctxUnmarkAllSection()" style="color:var(--muted)">↩️ Desmarcar todas</div>
+    <div class="ctx-sep"></div>
+    <div class="ctx-item danger" onclick="ctxDeleteSection()">🗑️ Excluir seção inteira</div>
+  `);
+}
+
+function closeCtx() { ctxMenu.classList.remove('open'); ctxTargetId = null; }
+
+window.ctxToggleCheck = function() { toggleCheck(ctxTargetId); closeCtx(); }
+window.ctxDeleteItem = function() {
+  closeCtx();
+  if (!confirm('Excluir esta tarefa?')) return;
+  const c = clients.find(x => x.id === activeId); if (!c) return;
+  for (const s of c.sections) { s.items = s.items.filter(it => it.id !== ctxTargetId); }
+  save(); renderMain(); renderSidebar();
+}
+window.ctxDeleteSection = function() {
+  closeCtx();
+  if (!confirm('Excluir esta seção e todas as tarefas?')) return;
+  const c = clients.find(x => x.id === activeId); if (!c) return;
+  c.sections = c.sections.filter(s => s.id !== ctxTargetId);
+  save(); renderMain(); renderSidebar();
+}
+window.ctxCollapseSection = function() {
+  const c = clients.find(x => x.id === activeId); if (!c) return;
+  const s = c.sections.find(x => x.id === ctxTargetId); if (!s) return;
+  s.collapsed = !s.collapsed; closeCtx(); save(); renderMain();
+}
+window.ctxMarkAllSection = function() {
+  const c = clients.find(x => x.id === activeId); if (!c) return;
+  const s = c.sections.find(x => x.id === ctxTargetId); if (!s) return;
+  s.items.forEach(it => { if (it.type === 'check') it.done = true; });
+  closeCtx(); save(); renderMain(); renderSidebar();
+}
+window.ctxUnmarkAllSection = function() {
+  const c = clients.find(x => x.id === activeId); if (!c) return;
+  const s = c.sections.find(x => x.id === ctxTargetId); if (!s) return;
+  s.items.forEach(it => { if (it.type === 'check') it.done = false; if (it.type === 'radio') it.selected = null; });
+  closeCtx(); save(); renderMain(); renderSidebar();
+}
+
+document.addEventListener('click', e => { if (!ctxMenu.contains(e.target)) closeCtx(); });
+document.addEventListener('contextmenu', e => {
+  if (!ctxMenu.contains(e.target) && !e.target.closest('.task-item') &&
+      !e.target.closest('.radio-wrapper') && !e.target.closest('.section-header')) closeCtx();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeModal(); closeEditModal(); closeCtx(); closeFirebaseModal(); }
+});
+
+// ── INTERACTIONS ──────────────────────────────────────────
+window.deleteActiveClient = function() {
+  const client = clients.find(c => c.id === activeId);
+  if (!client) return;
+  if (!confirm(`Excluir o cliente "${client.name}"? Esta ação não pode ser desfeita.`)) return;
+  clients = clients.filter(c => c.id !== activeId);
+  activeId = clients.length ? clients[0].id : null;
+  save(); renderSidebar(); renderMain();
+}
+
+window.deleteSection = function(e, secId) {
+  e.stopPropagation();
+  if (!confirm('Excluir esta seção e todas as suas tarefas?')) return;
+  const c = clients.find(x => x.id === activeId); if (!c) return;
+  c.sections = c.sections.filter(s => s.id !== secId);
+  save(); renderMain(); renderSidebar();
+}
+
+window.toggleSection = function(secId) {
+  const c = clients.find(x => x.id === activeId); if (!c) return;
+  const s = c.sections.find(x => x.id === secId); if (!s) return;
+  s.collapsed = !s.collapsed; save(); renderMain();
+}
+
+window.toggleCheck = function(itemId) {
+  const c = clients.find(x => x.id === activeId); if (!c) return;
+  for (const s of c.sections) for (const it of s.items) {
+    if (it.id === itemId) { it.done = !it.done; save(); renderMain(); renderSidebar(); return; }
+  }
+}
+
+window.selectRadio = function(itemId, idx) {
+  const c = clients.find(x => x.id === activeId); if (!c) return;
+  for (const s of c.sections) for (const it of s.items) {
+    if (it.id === itemId) { it.selected = it.selected===idx ? null : idx; save(); renderMain(); renderSidebar(); return; }
+  }
+}
+
+window.updateAnydesk = function(itemId, val) {
+  const c = clients.find(x => x.id === activeId); if (!c) return;
+  for (const s of c.sections) for (const it of s.items) if (it.id===itemId) { it.value=val; save(); return; }
+}
+
+window.selectClient = function(id) { activeId = id; renderSidebar(); renderMain(); }
+
+window.deleteClient = function(e, id) {
+  e.stopPropagation();
+  if (!confirm('Excluir este cliente?')) return;
+  clients = clients.filter(c => c.id !== id);
+  if (activeId === id) activeId = clients.length ? clients[0].id : null;
+  save(); renderSidebar(); renderMain();
+}
+
+// ── MODAL ──────────────────────────────────────────────────
+window.openModal = function() {
+  document.getElementById('m-name').value = '';
+  document.getElementById('m-computer').value = '';
+  document.getElementById('m-nfce-num').value = '';
+  document.getElementById('m-func').value = '';
+  document.getElementById('m-date').value = new Date().toISOString().split('T')[0];
+  selectType('Servidor');
+  document.getElementById('modal').classList.add('open');
+  setTimeout(() => document.getElementById('m-name').focus(), 100);
+}
+window.closeModal = function() { document.getElementById('modal').classList.remove('open'); }
+
+window.selectType = function(t) {
+  selectedType = t;
+  document.getElementById('type-servidor').classList.toggle('selected', t==='Servidor');
+  document.getElementById('type-nfce').classList.toggle('selected', t==='NFCe');
+  document.getElementById('nfce-num-group').style.display = t==='NFCe' ? 'block' : 'none';
+}
+
+window.createClient = function() {
+  const name = document.getElementById('m-name').value.trim();
+  if (!name) { document.getElementById('m-name').focus(); return; }
+  const rawDate = document.getElementById('m-date').value;
+  const date = rawDate ? new Date(rawDate+'T12:00:00').toLocaleDateString('pt-BR') : '';
+  const computer = document.getElementById('m-computer').value.trim();
+  const nfceNum = document.getElementById('m-nfce-num').value.trim();
+  const funcionario = document.getElementById('m-func').value.trim();
+  const id = 'c' + Date.now();
+  const sections = selectedType === 'Servidor' ? buildServidor(id) : buildNFCe(id, nfceNum);
+  clients.unshift({ id, name, date, computer, type: selectedType, nfceNum, funcionario, sections });
+  save(); closeModal(); selectClient(id); renderSidebar();
+  showToast(`Cliente "${name}" criado e salvo na nuvem!`, 'success');
+}
+
+document.getElementById('modal').addEventListener('click', e => {
+  if (e.target===document.getElementById('modal')) closeModal();
+});
+
+// ── EDIT MODAL ─────────────────────────────────────────────
+let editingId = null;
+
+window.openEditModal = function() {
+  const client = clients.find(c => c.id === activeId);
+  if (!client) return;
+  _fillEditModal(client);
+}
+
+window.openEditModalFor = function(e, id) {
+  e.stopPropagation();
+  const client = clients.find(c => c.id === id);
+  if (!client) return;
+  selectClient(id);
+  _fillEditModal(client);
+}
+
+function _fillEditModal(client) {
+  editingId = client.id;
+  document.getElementById('e-name').value = client.name || '';
+  document.getElementById('e-computer').value = client.computer || '';
+  document.getElementById('e-nfce-num').value = client.nfceNum || '';
+  document.getElementById('e-func').value = client.funcionario || '';
+  let dateVal = '';
+  if (client.date) {
+    const parts = client.date.split('/');
+    if (parts.length === 3) dateVal = `${parts[2]}-${parts[1]}-${parts[0]}`;
+  }
+  document.getElementById('e-date').value = dateVal;
+  document.getElementById('e-nfce-group').style.display = client.type === 'NFCe' ? 'block' : 'none';
+  document.getElementById('modal-edit').classList.add('open');
+  setTimeout(() => document.getElementById('e-name').focus(), 100);
+}
+
+window.closeEditModal = function() {
+  document.getElementById('modal-edit').classList.remove('open');
+  editingId = null;
+}
+
+window.saveEdit = function() {
+  const client = clients.find(c => c.id === editingId);
+  if (!client) return;
+  const name = document.getElementById('e-name').value.trim();
+  if (!name) { document.getElementById('e-name').focus(); return; }
+  const rawDate = document.getElementById('e-date').value;
+  const date = rawDate ? new Date(rawDate + 'T12:00:00').toLocaleDateString('pt-BR') : client.date;
+  const computer = document.getElementById('e-computer').value.trim();
+  const nfceNum = document.getElementById('e-nfce-num').value.trim();
+  const funcionario = document.getElementById('e-func').value.trim();
+  client.name = name;
+  client.date = date;
+  client.computer = computer;
+  client.funcionario = funcionario;
+  if (client.type === 'NFCe') client.nfceNum = nfceNum;
+  save();
+  closeEditModal();
+  renderSidebar();
+  renderMain();
+  showToast('Alterações salvas!', 'success');
+}
+
+document.getElementById('modal-edit').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal-edit')) closeEditModal();
+});
+
+// ── FIREBASE CONFIG MODAL ──────────────────────────────────
+window.openFirebaseModal = function() {
+  const cfg = loadFbConfig();
+  if (cfg) {
+    document.getElementById('fb-api-key').value = cfg.apiKey || '';
+    document.getElementById('fb-auth-domain').value = cfg.authDomain || '';
+    document.getElementById('fb-db-url').value = cfg.databaseURL || '';
+    document.getElementById('fb-project-id').value = cfg.projectId || '';
+    document.getElementById('fb-app-id').value = cfg.appId || '';
+  }
+  document.getElementById('modal-firebase').classList.add('open');
+}
+
+window.closeFirebaseModal = function() {
+  document.getElementById('modal-firebase').classList.remove('open');
+  document.getElementById('fb-test-result').style.display = 'none';
+}
+
+document.getElementById('modal-firebase').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal-firebase')) closeFirebaseModal();
+});
+
+function getFormConfig() {
+  return {
+    apiKey: document.getElementById('fb-api-key').value.trim(),
+    authDomain: document.getElementById('fb-auth-domain').value.trim(),
+    databaseURL: document.getElementById('fb-db-url').value.trim(),
+    projectId: document.getElementById('fb-project-id').value.trim(),
+    appId: document.getElementById('fb-app-id').value.trim(),
+  };
+}
+
+window.testFirebaseConfig = async function() {
+  const cfg = getFormConfig();
+  const resultEl = document.getElementById('fb-test-result');
+  resultEl.style.display = 'block';
+  resultEl.innerHTML = '<span style="color:var(--yellow);font-family:var(--mono);font-size:12px">⏳ Testando conexão...</span>';
+  try {
+    const testApp = initializeApp(cfg, 'test-' + Date.now());
+    const testDb = getDatabase(testApp);
+    const snap = await get(ref(testDb, '.info/connected'));
+    resultEl.innerHTML = '<span style="color:var(--accent);font-family:var(--mono);font-size:12px">✅ Conexão bem-sucedida! Clique em Salvar e Conectar.</span>';
+  } catch(e) {
+    resultEl.innerHTML = `<span style="color:var(--red);font-family:var(--mono);font-size:12px">❌ Erro: ${e.message}</span>`;
+  }
+}
+
+window.saveFirebaseConfig = async function() {
+  const cfg = getFormConfig();
+  if (!cfg.apiKey || !cfg.databaseURL) {
+    showToast('Preencha pelo menos a API Key e o Database URL.', 'error');
+    return;
+  }
+  saveFbConfigLocal(cfg);
+  closeFirebaseModal();
+  document.getElementById('loading-text').textContent = 'Conectando ao Firebase...';
+  document.getElementById('loading-overlay').classList.remove('hidden');
+  fbApp = null;
+  const ok = await initFirebase(cfg);
+  if (ok) {
+    await fbLoadClients();
+    subscribeToChanges();
+    renderSidebar();
+    renderMain();
+    showToast('Firebase conectado! Dados sincronizados.', 'success');
+    document.getElementById('fb-users-online').style.display = 'inline';
+    document.getElementById('fb-users-online').textContent = '🔥 Nuvem ativa';
+  } else {
+    setFbStatus('error');
+    showToast('Não foi possível conectar. Verifique as configurações.', 'error');
+  }
+  document.getElementById('loading-overlay').classList.add('hidden');
+}
+
+// ── TOAST ──────────────────────────────────────────────────
+window.showToast = function(msg, type = 'info') {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  const icons = { success: '✅', error: '❌', info: 'ℹ️' };
+  toast.innerHTML = `<span>${icons[type]||'📢'}</span> ${msg}`;
+  container.appendChild(toast);
+  setTimeout(() => { toast.style.opacity='0'; toast.style.transition='opacity .3s'; setTimeout(()=>toast.remove(), 300); }, 3000);
+}
+
+// ── INIT ──────────────────────────────────────────────────
+let clients = [];
+let activeId = null;
+let selectedType = 'Servidor';
+
+async function init() {
+  const overlay = document.getElementById('loading-overlay');
+  const cfg = loadFbConfig();
+
+  if (cfg && cfg.apiKey && cfg.databaseURL) {
+    document.getElementById('loading-text').textContent = 'Conectando ao Firebase...';
+    const ok = await initFirebase(cfg);
+    if (ok) {
+      await fbLoadClients();
+      subscribeToChanges();
+      document.getElementById('fb-users-online').style.display = 'inline';
+      document.getElementById('fb-users-online').textContent = '🔥 Nuvem ativa';
+    } else {
+      setFbStatus('error');
+      load_local();
+      showToast('Firebase indisponível. Usando dados locais.', 'error');
+    }
+  } else {
+    setFbStatus('offline');
+    load_local();
+    // First time: show firebase modal after a brief delay
+    setTimeout(() => {
+      if (!loadFbConfig()) {
+        showToast('Configure o Firebase para salvar na nuvem! Clique em ⚙️ Config Firebase', 'info');
+      }
+    }, 1500);
+  }
+
+  if (clients.length) activeId = clients[0].id;
+  renderSidebar();
+  renderMain();
+  overlay.classList.add('hidden');
+}
+
+init();
+</script>
+</body>
+</html>
