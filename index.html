@@ -1,451 +1,218 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>GR7 — Dashboard</title>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;600&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet"/>
-<style>
-:root{
-  --bg:#07080d;--s1:#0e1018;--s2:#161820;--s3:#1e2030;--bdr:#252738;
-  --text:#dde1f0;--muted:#5a5e78;--r:14px;
-  --green:#00e5a0;--green2:#059669;
-  --c0:#818cf8;--c1:#38bdf8;--c2:#34d399;--c3:#fbbf24;--c4:#f87171;--c5:#e879f9;
-}
-*{margin:0;padding:0;box-sizing:border-box}
-body{background:var(--bg);color:var(--text);font-family:'Outfit',sans-serif;min-height:100vh;overflow-x:hidden}
-body::after{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:0;opacity:.5}
-.blob{position:fixed;border-radius:50%;filter:blur(130px);pointer-events:none;z-index:0;opacity:.15}
-.blob1{width:700px;height:700px;top:-250px;left:-200px;background:var(--c0)}
-.blob2{width:600px;height:600px;bottom:-250px;right:-150px;background:var(--c5)}
+-- ============================================================
+--  GR7 — MIGRAÇÃO SEGURA (não apaga dados existentes)
+--  Execute no Supabase > SQL Editor
+-- ============================================================
 
-/* SHELL */
-.shell{position:relative;z-index:10;max-width:1400px;margin:0 auto;padding:0 44px 80px}
 
-/* HEADER */
-header{display:flex;align-items:center;justify-content:space-between;padding:32px 0 44px;flex-wrap:wrap;gap:16px}
-.logo{display:flex;align-items:center;gap:16px}
-.logo-mark{width:54px;height:54px;background:linear-gradient(135deg,var(--c0),var(--c5));border-radius:16px;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:17px;color:#fff;box-shadow:0 0 35px rgba(129,140,248,.4)}
-.logo-text h1{font-family:'Syne',sans-serif;font-size:25px;font-weight:800;letter-spacing:-.5px}
-.logo-text p{font-size:13px;color:var(--muted);margin-top:3px}
-.hd-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.chip{font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--s1);border:1px solid var(--bdr);padding:6px 14px;border-radius:99px;color:var(--muted);user-select:none}
-.chip.live{border-color:rgba(0,229,160,.3);background:rgba(0,229,160,.07);color:var(--green);display:flex;align-items:center;gap:7px}
-.chip.live::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--green);animation:blink 2s ease-in-out infinite}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
-.chip.btn{cursor:pointer;transition:border-color .15s,color .15s}.chip.btn:hover{border-color:var(--c0);color:var(--c0)}
+-- ============================================================
+--  1. ADICIONAR colunas que faltam em checklist_progresso
+-- ============================================================
+ALTER TABLE checklist_progresso
+  ADD COLUMN IF NOT EXISTS marcado_por TEXT,
+  ADD COLUMN IF NOT EXISTS marcado_em  TIMESTAMPTZ DEFAULT NOW();
 
-/* SECTION TITLE */
-.sec{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted);margin-bottom:18px}
 
-/* SUMMARY CARDS */
-.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:48px}
-.sc{background:var(--s1);border:1px solid var(--bdr);border-radius:var(--r);padding:24px;position:relative;overflow:hidden;transition:transform .2s,border-color .2s}
-.sc:hover{transform:translateY(-3px);border-color:rgba(129,140,248,.3)}
-.sc::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
-.sc.tot::before{background:linear-gradient(90deg,var(--c0),var(--c5))}
-.sc.done::before{background:linear-gradient(90deg,var(--green),var(--green2))}
-.sc.half::before{background:linear-gradient(90deg,var(--c3),#f97316)}
-.sc.pend::before{background:linear-gradient(90deg,var(--c4),#dc2626)}
-.sc-num{font-family:'IBM Plex Mono',monospace;font-size:44px;font-weight:600;line-height:1;margin-bottom:6px}
-.sc.tot .sc-num{color:var(--c0)}.sc.done .sc-num{color:var(--green)}.sc.half .sc-num{color:var(--c3)}.sc.pend .sc-num{color:var(--c4)}
-.sc-lbl{font-size:13px;color:var(--muted)}.sc-ico{position:absolute;right:20px;top:18px;font-size:30px;opacity:.2}
+-- ============================================================
+--  2. ADICIONAR colunas que faltam em clientes (se não existir)
+-- ============================================================
+ALTER TABLE clientes
+  ADD COLUMN IF NOT EXISTS computador TEXT,
+  ADD COLUMN IF NOT EXISTS criado_em  TIMESTAMPTZ DEFAULT NOW();
 
-/* CLIENTES RECENTES */
-.clientes-box{background:var(--s1);border:1px solid var(--bdr);border-radius:var(--r);margin-bottom:48px;overflow:hidden}
-.box-head{padding:18px 24px;border-bottom:1px solid var(--bdr);font-family:'Syne',sans-serif;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:space-between;gap:12px}
-.box-head span{color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:400}
-.cl-row{display:grid;grid-template-columns:1fr 120px 130px 110px 90px;align-items:center;gap:12px;padding:13px 24px;border-bottom:1px solid var(--bdr);transition:background .15s;font-size:13px}
-.cl-row:last-child{border-bottom:none}.cl-row:hover{background:rgba(255,255,255,.02)}
-.cl-head{background:var(--s2);font-size:10px;font-family:'IBM Plex Mono',monospace;letter-spacing:1px;color:var(--muted);text-transform:uppercase}
-.cl-head:hover{background:var(--s2)}
-.cl-name{font-weight:600;color:var(--text)}
-.cl-badge{display:inline-block;font-size:10px;font-weight:600;padding:3px 9px;border-radius:99px;white-space:nowrap}
-.cl-badge.servidor{background:rgba(129,140,248,.15);color:var(--c0)}
-.cl-badge.retaguarda{background:rgba(56,189,248,.12);color:var(--c1)}
-.cl-badge.nfce{background:rgba(0,229,160,.1);color:var(--green)}
-.cl-prog{display:flex;align-items:center;gap:8px}
-.mini-track{flex:1;height:5px;background:var(--s3);border-radius:99px;overflow:hidden}
-.mini-fill{height:100%;border-radius:99px}
-.mini-pct{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);width:32px;text-align:right;flex-shrink:0}
-.cl-func{color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.cl-date{color:var(--muted);font-size:11px;font-family:'IBM Plex Mono',monospace}
 
-/* RANKING */
-.ranking{background:var(--s1);border:1px solid var(--bdr);border-radius:var(--r);margin-bottom:48px;overflow:hidden}
-.rk-row{display:grid;grid-template-columns:46px 44px 1fr 220px 64px 90px;align-items:center;gap:12px;padding:14px 24px;border-bottom:1px solid var(--bdr);transition:background .15s}
-.rk-row:last-child{border-bottom:none}.rk-row:hover{background:rgba(255,255,255,.025)}
-.rk-pos{font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:600;text-align:center}
-.rk-av{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;font-family:'Syne',sans-serif}
-.rk-name{font-size:15px;font-weight:600;text-transform:capitalize}
-.rk-bar-wrap{height:7px;background:var(--s3);border-radius:99px;overflow:hidden}
-.rk-bar{height:100%;border-radius:99px;transition:width 1.3s cubic-bezier(.4,0,.2,1)}
-.rk-pct{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;text-align:right}
-.rk-tasks{font-size:12px;color:var(--muted);text-align:right}
+-- ============================================================
+--  3. TABELA: colaboradores (cria se não existir)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS colaboradores (
+  id        SERIAL PRIMARY KEY,
+  nome      TEXT NOT NULL,
+  cor       TEXT DEFAULT '#818cf8',
+  ativo     BOOLEAN DEFAULT TRUE,
+  criado_em TIMESTAMPTZ DEFAULT NOW()
+);
 
-/* USER CARDS */
-.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
-.ucard{background:var(--s1);border:1px solid var(--bdr);border-radius:var(--r);overflow:hidden;transition:transform .25s,box-shadow .25s,border-color .25s;animation:fadeUp .5s both}
-.ucard:hover{transform:translateY(-5px);box-shadow:0 28px 60px rgba(0,0,0,.55)}
-@keyframes fadeUp{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
-.ucard:nth-child(1){animation-delay:.05s}.ucard:nth-child(2){animation-delay:.10s}.ucard:nth-child(3){animation-delay:.15s}
-.ucard:nth-child(4){animation-delay:.20s}.ucard:nth-child(5){animation-delay:.25s}.ucard:nth-child(6){animation-delay:.30s}
-.ucard-top{padding:20px 20px 16px;display:flex;align-items:center;gap:14px;border-bottom:1px solid var(--bdr)}
-.av{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:17px;font-weight:800;flex-shrink:0}
-.uinfo{flex:1;min-width:0}
-.uname{font-family:'Syne',sans-serif;font-size:17px;font-weight:700;text-transform:capitalize}
-.ubadge{display:inline-block;margin-top:4px;font-size:10px;font-weight:600;letter-spacing:.5px;padding:2px 9px;border-radius:99px}
-.ubadge.great{background:rgba(0,229,160,.15);color:var(--green)}
-.ubadge.good{background:rgba(56,189,248,.12);color:var(--c1)}
-.ubadge.mid{background:rgba(251,191,36,.12);color:var(--c3)}
-.ubadge.low{background:rgba(248,113,113,.12);color:var(--c4)}
-.uscore{font-family:'IBM Plex Mono',monospace;font-size:28px;font-weight:600;text-align:right}
-.uscore small{display:block;font-size:10px;color:var(--muted);font-family:'Outfit',sans-serif;font-weight:400;letter-spacing:.5px}
+INSERT INTO colaboradores (nome, cor) VALUES
+  ('João',     '#818cf8'),
+  ('Bruno',    '#38bdf8'),
+  ('Samuel',   '#34d399'),
+  ('Marcelo',  '#fbbf24'),
+  ('Pabllo',   '#f87171'),
+  ('Vinicius', '#e879f9')
+ON CONFLICT DO NOTHING;
 
-/* PROGRESS */
-.uprog{padding:16px 20px 12px}
-.uprog-meta{display:flex;justify-content:space-between;margin-bottom:7px}
-.uprog-lbl{font-size:12px;color:var(--muted)}.uprog-n{font-family:'IBM Plex Mono',monospace;font-size:12px}
-.ptrack{height:7px;background:var(--s3);border-radius:99px;overflow:hidden}
-.pfill{height:100%;border-radius:99px;position:relative;transition:width 1.2s cubic-bezier(.4,0,.2,1)}
-.pfill::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.2),transparent);animation:shim 2.5s ease-in-out infinite}
-@keyframes shim{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
 
-/* STATS */
-.ustats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:0 20px 16px}
-.ustat{background:var(--s2);border-radius:10px;padding:12px;text-align:center}
-.ustat-n{font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:600;line-height:1}
-.ustat-l{font-size:10px;color:var(--muted);margin-top:3px;letter-spacing:.3px}
+-- ============================================================
+--  4. TABELA: checklist_steps (cria se não existir)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS checklist_steps (
+  id    SERIAL PRIMARY KEY,
+  grupo TEXT NOT NULL,
+  num   INT  NOT NULL,
+  texto TEXT NOT NULL,
+  UNIQUE (grupo, num)
+);
 
-/* GROUP BARS */
-.ugroups{padding:0 20px 18px;display:flex;flex-direction:column;gap:8px}
-.ugroup-row{display:flex;align-items:center;gap:10px}
-.ugroup-lbl{font-size:11px;color:var(--muted);width:80px;flex-shrink:0}
-.ugroup-track{flex:1;height:6px;background:var(--s3);border-radius:99px;overflow:hidden}
-.ugroup-fill{height:100%;border-radius:99px;transition:width 1.2s cubic-bezier(.4,0,.2,1)}
-.ugroup-pct{font-family:'IBM Plex Mono',monospace;font-size:11px;width:32px;text-align:right;flex-shrink:0}
+-- Steps SERVIDOR
+INSERT INTO checklist_steps (grupo, num, texto) VALUES
+  ('servidor',  1,  'Preparar acesso pelo AnyDesk'),
+  ('servidor',  2,  'Instalar o Master Remote no cliente'),
+  ('servidor',  3,  'Transferir arquivos GR7 pelo Master'),
+  ('servidor',  4,  'Ajustes rápidos no Windows'),
+  ('servidor',  5,  'Pastas na Área de Trabalho'),
+  ('servidor',  6,  '(Se possível) Renomear o computador'),
+  ('servidor',  7,  'Compartilhamento de redes do Windows'),
+  ('servidor',  8,  'Fixar pastas no Acesso Rápido'),
+  ('servidor',  9,  '(Se dedicado) Instalar WASSetup (Wise Auto Shutdown)'),
+  ('servidor',  10, 'Instalar e definir Notepad++'),
+  ('servidor',  11, 'Instalar a fonte dos relatórios'),
+  ('servidor',  12, 'Copiar o registro do cliente'),
+  ('servidor',  14, 'Restaurar a base no Administrator'),
+  ('servidor',  15, 'Compartilhar pastas do servidor'),
+  ('servidor',  16, 'Ajustar Demo.ini e config.ini'),
+  ('servidor',  17, 'Criar atalhos GR7 e organizar'),
+  ('servidor',  18, 'Configurar diretórios no Retaguarda'),
+  ('servidor',  19, 'Rodar o ATUALIZA GR7'),
+  ('servidor',  20, 'Configurar o Verificador GR7 na inicialização'),
+  ('servidor',  21, 'Instalando WebCharts e ServerMobile como serviço'),
+  ('servidor',  22, 'Criando e Configurando Rotina de Backup MySQL'),
+  ('servidor',  23, 'Criar exceções no Windows Defender')
+ON CONFLICT (grupo, num) DO NOTHING;
 
-/* CLIENTES LIST TOGGLE */
-.ucli{border-top:1px solid var(--bdr)}
-.ucli-btn{width:100%;padding:11px 20px;background:none;border:none;color:var(--muted);font-family:'Outfit',sans-serif;font-size:12px;cursor:pointer;text-align:left;display:flex;align-items:center;justify-content:space-between;transition:color .15s}
-.ucli-btn:hover{color:var(--text)}
-.ucli-list{display:none;padding:0 20px 14px}
-.ucli-list.open{display:block}
-.ucli-item{font-size:12px;padding:7px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between;gap:8px}
-.ucli-item:last-child{border:none}
-.ucli-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
-.ucli-pct{font-family:'IBM Plex Mono',monospace;font-size:11px;flex-shrink:0}
+-- Steps RETAGUARDA
+INSERT INTO checklist_steps (grupo, num, texto) VALUES
+  ('retaguarda',  1,  'Preparar acesso pelo AnyDesk'),
+  ('retaguarda',  2,  'Instalar o Master Remote no cliente'),
+  ('retaguarda',  3,  'Transferir arquivos GR7 pelo Master'),
+  ('retaguarda',  4,  'Ajustes rápidos no Windows'),
+  ('retaguarda',  5,  'Pastas na Área de Trabalho'),
+  ('retaguarda',  6,  '(Se possível) Renomear o computador'),
+  ('retaguarda',  7,  'Compartilhamento de redes do Windows'),
+  ('retaguarda',  8,  'Fixar pastas no Acesso Rápido'),
+  ('retaguarda',  9,  'Instalar a fonte dos relatórios'),
+  ('retaguarda',  10, 'Atualizar Registro e colocar no Servidor'),
+  ('retaguarda',  11, 'Instalar MySQL Manager'),
+  ('retaguarda',  12, 'Ajustar Demo.ini e config.ini'),
+  ('retaguarda',  13, 'Criar atalhos GR7 e organizar'),
+  ('retaguarda',  14, 'Rodar o ATUALIZA GR7'),
+  ('retaguarda',  15, 'Configurar o ATUALIZA GR7 na inicialização'),
+  ('retaguarda',  16, 'Permissão para acessar rede compartilhada / Credenciais do Windows'),
+  ('retaguarda',  17, 'Configurando periféricos no Sistema GR7 (Caso tenha Impressora/Etiqueta)'),
+  ('retaguarda',  18, 'Criar exceções no Windows Defender')
+ON CONFLICT (grupo, num) DO NOTHING;
 
-/* LOADER */
-.loader{text-align:center;padding:60px 20px;color:var(--muted);font-size:14px}
-.spin{width:36px;height:36px;border:3px solid var(--bdr);border-top-color:var(--c0);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 16px}
-@keyframes spin{to{transform:rotate(360deg)}}
-.err{color:var(--c4)!important}
+-- Steps NFCe
+INSERT INTO checklist_steps (grupo, num, texto) VALUES
+  ('nfce',  1,  'Preparar acesso pelo AnyDesk'),
+  ('nfce',  2,  'Instalar o Master Remote no cliente'),
+  ('nfce',  3,  'Transferir arquivos GR7 pelo Master'),
+  ('nfce',  4,  'Ajustes rápidos no Windows'),
+  ('nfce',  5,  'Pastas na Área de Trabalho'),
+  ('nfce',  6,  '(Se possível) Renomear o computador'),
+  ('nfce',  7,  'Compartilhamento de redes do Windows'),
+  ('nfce',  8,  'Fixar pastas no Acesso Rápido'),
+  ('nfce',  9,  'Atualizar Registro e colocar no Servidor'),
+  ('nfce',  11, 'Restaurar a base no Administrator'),
+  ('nfce',  12, 'Ajustar Demo.ini e config.ini'),
+  ('nfce',  13, 'Criar atalhos GR7 e organizar'),
+  ('nfce',  15, 'Configurar o ATUALIZA GR7 na inicialização'),
+  ('nfce',  16, 'Configurando periféricos no Sistema GR7 (Caso tenha Impressora/Balança)'),
+  ('nfce',  17, 'Instalando fonte para relatório (Caso vá usar Retaguarda)'),
+  ('nfce',  18, 'Criar exceções no Windows Defender')
+ON CONFLICT (grupo, num) DO NOTHING;
 
-/* RESPONSIVE */
-@media(max-width:1100px){.cards{grid-template-columns:repeat(2,1fr)}.summary{grid-template-columns:repeat(2,1fr)}.rk-row{grid-template-columns:40px 40px 1fr 150px 55px 70px}.cl-row{grid-template-columns:1fr 110px 120px 80px}}
-@media(max-width:700px){.shell{padding:0 16px 60px}.cards{grid-template-columns:1fr}.rk-row{grid-template-columns:36px 36px 1fr 100px 50px}.rk-tasks{display:none}.cl-row{grid-template-columns:1fr 90px 100px}.cl-date{display:none}}
-</style>
-</head>
-<body>
-<div class="blob blob1"></div>
-<div class="blob blob2"></div>
-<div class="shell">
 
-<!-- HEADER -->
-<header>
-  <div class="logo">
-    <div class="logo-mark">GR7</div>
-    <div class="logo-text">
-      <h1>Dashboard de Desempenho</h1>
-      <p>INSTALACOES CLIENTES — Dados em tempo real do Supabase</p>
-    </div>
-  </div>
-  <div class="hd-right">
-    <div class="chip live">AO VIVO</div>
-    <div class="chip" id="dateChip"></div>
-    <div class="chip btn" id="syncChip" onclick="loadAll()">↻ Atualizar</div>
-  </div>
-</header>
+-- ============================================================
+--  5. ÍNDICES para performance
+-- ============================================================
+CREATE INDEX IF NOT EXISTS idx_progresso_cliente_id  ON checklist_progresso (cliente_id);
+CREATE INDEX IF NOT EXISTS idx_progresso_marcado_por ON checklist_progresso (marcado_por);
+CREATE INDEX IF NOT EXISTS idx_progresso_concluido   ON checklist_progresso (concluido);
+CREATE INDEX IF NOT EXISTS idx_progresso_grupo       ON checklist_progresso (grupo);
+CREATE INDEX IF NOT EXISTS idx_clientes_funcionario  ON clientes (funcionario);
+CREATE INDEX IF NOT EXISTS idx_clientes_tipo         ON clientes (tipo);
 
-<!-- SUMMARY -->
-<p class="sec">Visão Geral</p>
-<div class="summary">
-  <div class="sc tot"><div class="sc-ico">📋</div><div class="sc-num" id="sClientes">—</div><div class="sc-lbl">Clientes Ativos</div></div>
-  <div class="sc done"><div class="sc-ico">✅</div><div class="sc-num" id="sDone">—</div><div class="sc-lbl">Itens Concluídos</div></div>
-  <div class="sc half"><div class="sc-ico">⏳</div><div class="sc-num" id="sMedia">—</div><div class="sc-lbl">Média de Conclusão</div></div>
-  <div class="sc pend"><div class="sc-ico">🔴</div><div class="sc-num" id="sPend">—</div><div class="sc-lbl">Itens Pendentes</div></div>
-</div>
 
-<!-- ÚLTIMOS CLIENTES -->
-<p class="sec">Últimos Clientes</p>
-<div class="clientes-box">
-  <div class="box-head">📂 Clientes Recentes <span id="totalClientes"></span></div>
-  <div id="clientesBody"><div class="loader"><div class="spin"></div>Carregando clientes…</div></div>
-</div>
+-- ============================================================
+--  6. VIEW: vw_progresso_clientes
+-- ============================================================
+CREATE OR REPLACE VIEW vw_progresso_clientes AS
+SELECT
+  c.id,
+  c.nome,
+  c.tipo,
+  c.funcionario,
+  c.data,
+  c.criado_em,
+  CASE
+    WHEN LOWER(c.tipo) LIKE '%retaguarda%' THEN 18
+    WHEN LOWER(c.tipo) LIKE '%nfce%'       THEN 16
+    WHEN LOWER(c.tipo) LIKE '%nf-ce%'      THEN 16
+    ELSE 22
+  END AS total_steps,
+  COUNT(p.id) FILTER (WHERE p.concluido = TRUE) AS steps_concluidos,
+  ROUND(
+    COUNT(p.id) FILTER (WHERE p.concluido = TRUE)::NUMERIC
+    / NULLIF(CASE
+        WHEN LOWER(c.tipo) LIKE '%retaguarda%' THEN 18
+        WHEN LOWER(c.tipo) LIKE '%nfce%'       THEN 16
+        WHEN LOWER(c.tipo) LIKE '%nf-ce%'      THEN 16
+        ELSE 22
+      END, 0) * 100
+  , 1) AS percentual
+FROM clientes c
+LEFT JOIN checklist_progresso p ON p.cliente_id = c.id
+GROUP BY c.id, c.nome, c.tipo, c.funcionario, c.data, c.criado_em
+ORDER BY c.criado_em DESC;
 
-<!-- RANKING -->
-<p class="sec">Ranking de Colaboradores</p>
-<div class="ranking">
-  <div class="box-head">🏆 Classificação por Tarefas Concluídas</div>
-  <div id="rankingBody"><div class="loader"><div class="spin"></div>Calculando ranking…</div></div>
-</div>
 
-<!-- CARDS -->
-<p class="sec">Desempenho Individual</p>
-<div class="cards" id="cardsGrid">
-  <div class="loader" style="grid-column:1/-1"><div class="spin"></div>Carregando colaboradores…</div>
-</div>
+-- ============================================================
+--  7. VIEW: vw_ranking_colaboradores
+-- ============================================================
+CREATE OR REPLACE VIEW vw_ranking_colaboradores AS
+SELECT
+  p.marcado_por                                                          AS colaborador,
+  COUNT(*)        FILTER (WHERE p.concluido = TRUE)                     AS total_concluidos,
+  COUNT(DISTINCT p.cliente_id)                                          AS total_clientes,
+  COUNT(*)        FILTER (WHERE p.concluido = TRUE AND p.grupo = 'servidor')   AS servidor,
+  COUNT(*)        FILTER (WHERE p.concluido = TRUE AND p.grupo = 'retaguarda') AS retaguarda,
+  COUNT(*)        FILTER (WHERE p.concluido = TRUE AND p.grupo = 'nfce')       AS nfce,
+  ROUND(
+    COUNT(*) FILTER (WHERE p.concluido = TRUE)::NUMERIC
+    / NULLIF(COUNT(DISTINCT p.cliente_id), 0)
+  , 1)                                                                   AS media_por_cliente,
+  MAX(p.marcado_em)                                                      AS ultima_atividade
+FROM checklist_progresso p
+WHERE p.marcado_por IS NOT NULL
+  AND p.marcado_por <> ''
+  AND p.marcado_por <> '—'
+GROUP BY p.marcado_por
+ORDER BY total_concluidos DESC;
 
-</div><!-- /shell -->
 
-<script>
-// ═══════════════════════════════════════════════
-//  SUPABASE CONFIG — mesmas tabelas do checklist
-// ═══════════════════════════════════════════════
-const URL  = 'https://nhzjkahbkeusgntheyug.supabase.co';
-const KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5oemprYWhia2V1c2dudGhleXVnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyNjYwMDQsImV4cCI6MjA4ODg0MjAwNH0.hB2bJBMoJoztuNrb4xCRIgWmwMlayBpVOMWq3mI4nH4';
-const H    = {'apikey':KEY,'Authorization':`Bearer ${KEY}`,'Content-Type':'application/json'};
+-- ============================================================
+--  8. VIEW: vw_resumo_geral
+-- ============================================================
+CREATE OR REPLACE VIEW vw_resumo_geral AS
+SELECT
+  COUNT(DISTINCT c.id)                                            AS total_clientes,
+  COUNT(p.id) FILTER (WHERE p.concluido = TRUE)                  AS total_concluidos,
+  COUNT(p.id) FILTER (WHERE p.concluido = FALSE OR p.id IS NULL) AS total_pendentes,
+  ROUND(
+    COUNT(p.id) FILTER (WHERE p.concluido = TRUE)::NUMERIC
+    / NULLIF(COUNT(p.id), 0) * 100
+  , 1)                                                            AS percentual_geral
+FROM clientes c
+LEFT JOIN checklist_progresso p ON p.cliente_id = c.id;
 
-// Total de steps por grupo (extraído do checklist original)
-const TOTAL_STEPS = { servidor: 22, retaguarda: 18, nfce: 16 };
-const TOTAL_ALL   = TOTAL_STEPS.servidor + TOTAL_STEPS.retaguarda + TOTAL_STEPS.nfce; // 56
 
-// Colaboradores reconhecidos
-const USERS = [
-  {key:'joao',    names:['joao','joão'],         label:'João',    color:'#818cf8'},
-  {key:'bruno',   names:['bruno'],               label:'Bruno',   color:'#38bdf8'},
-  {key:'samuel',  names:['samuel'],              label:'Samuel',  color:'#34d399'},
-  {key:'marcelo', names:['marcelo'],             label:'Marcelo', color:'#fbbf24'},
-  {key:'pabllo',  names:['pabllo','pablo'],      label:'Pabllo',  color:'#f87171'},
-  {key:'vinicius',names:['vinicius','vinícius'], label:'Vinicius',color:'#e879f9'},
-];
-const RANKS = ['🥇','🥈','🥉','4°','5°','6°'];
+-- ============================================================
+--  VERIFICAÇÃO FINAL — rode após o script para confirmar
+-- ============================================================
+-- SELECT column_name, data_type
+-- FROM information_schema.columns
+-- WHERE table_name = 'checklist_progresso'
+-- ORDER BY ordinal_position;
 
-function initials(n){const p=(n||'').trim().split(' ');return p.length>=2?(p[0][0]+p[1][0]).toUpperCase():(n||'??').slice(0,2).toUpperCase()}
-function badge(pct){
-  if(pct>=80)return{cls:'great',lbl:'🔥 Excelente'};
-  if(pct>=60)return{cls:'good', lbl:'👍 Bom'};
-  if(pct>=40)return{cls:'mid',  lbl:'⚡ Regular'};
-  return           {cls:'low',  lbl:'⚠️ Atenção'};
-}
-function matchUser(name){
-  if(!name)return null;
-  const n=name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-  return USERS.find(u=>u.names.some(k=>n.includes(k)))||null;
-}
-function fmtDate(d){if(!d)return '—';const dt=new Date(d);return dt.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'})}
-
-async function db(path){
-  const r=await fetch(`${URL}/rest/v1/${path}`,{headers:H});
-  if(!r.ok)throw new Error(await r.text());
-  return r.json();
-}
-
-// ═══════════════════════════════════════════════
-//  LOAD ALL
-// ═══════════════════════════════════════════════
-async function loadAll(){
-  document.getElementById('syncChip').textContent='↻ Sincronizando…';
-  try{
-    // 1. Buscar clientes
-    const clientes = await db('clientes?select=*&order=criado_em.desc&limit=200');
-
-    // 2. Buscar todo progresso
-    const progresso = await db('checklist_progresso?select=*');
-
-    // ── Montar mapa: cliente_id → {done, total, grupo}
-    const cliMap = {};
-    clientes.forEach(c=>{
-      const tipo = (c.tipo||'servidor').toLowerCase().replace('nfce','nfce').replace('nf-ce','nfce');
-      const key  = tipo.includes('retaguarda')?'retaguarda':tipo.includes('nfce')?'nfce':'servidor';
-      cliMap[c.id]={
-        nome:c.nome, func:c.funcionario, data:c.criado_em, tipo:key,
-        total: TOTAL_STEPS[key]||22, done:0
-      };
-    });
-
-    progresso.forEach(p=>{
-      if(p.concluido && cliMap[p.cliente_id]){
-        cliMap[p.cliente_id].done++;
-      }
-    });
-
-    // ── Estatísticas globais
-    const allDone  = Object.values(cliMap).reduce((s,c)=>s+c.done,0);
-    const allTotal = Object.values(cliMap).reduce((s,c)=>s+c.total,0);
-    const avgPct   = allTotal ? Math.round(allDone/allTotal*100) : 0;
-    const pend     = allTotal - allDone;
-
-    document.getElementById('sClientes').textContent  = clientes.length;
-    document.getElementById('sDone').textContent      = allDone;
-    document.getElementById('sMedia').textContent     = avgPct+'%';
-    document.getElementById('sPend').textContent      = pend;
-    document.getElementById('totalClientes').textContent = `${clientes.length} registros`;
-
-    // ── Render clientes table
-    renderClientes(Object.values(cliMap).slice(0,15));
-
-    // ── Por colaborador: itens marcados por cada um
-    const byUser = {};
-    USERS.forEach(u=>{byUser[u.key]={...u, done:0, clientes:new Set(), groups:{servidor:0,retaguarda:0,nfce:0}}});
-
-    progresso.forEach(p=>{
-      if(!p.concluido||!p.marcado_por)return;
-      const u=matchUser(p.marcado_por);
-      if(!u)return;
-      byUser[u.key].done++;
-      if(p.cliente_id)byUser[u.key].clientes.add(p.cliente_id);
-      const g=p.grupo||'servidor';
-      if(byUser[u.key].groups[g]!==undefined) byUser[u.key].groups[g]++;
-    });
-
-    // Converter clientes Set → array com detalhes
-    Object.keys(byUser).forEach(k=>{
-      const ids=[...byUser[k].clientes];
-      byUser[k].clientesData=ids.map(id=>cliMap[id]).filter(Boolean);
-    });
-
-    renderRanking(byUser);
-    renderCards(byUser, cliMap);
-
-    document.getElementById('syncChip').textContent='✓ Atualizado';
-    setTimeout(()=>document.getElementById('syncChip').textContent='↻ Atualizar',3000);
-
-  }catch(err){
-    console.error(err);
-    document.getElementById('syncChip').textContent='⚠ Erro';
-    const msg=`<div class="loader err">❌ ${err.message}<br><small>Verifique conexão ou tabelas no Supabase</small></div>`;
-    document.getElementById('clientesBody').innerHTML=msg;
-    document.getElementById('rankingBody').innerHTML=msg;
-    document.getElementById('cardsGrid').innerHTML=`<div class="loader err" style="grid-column:1/-1">❌ ${err.message}</div>`;
-  }
-}
-
-// ═══════════════════════════════════════════════
-//  RENDER CLIENTES
-// ═══════════════════════════════════════════════
-function renderClientes(list){
-  const typeColor={servidor:'#818cf8',retaguarda:'#38bdf8',nfce:'#00e5a0'};
-  const typeLabel={servidor:'🖥 Servidor',retaguarda:'🗄️ Retaguarda',nfce:'🧾 NFCe'};
-  const head=`<div class="cl-row cl-head"><div>Cliente</div><div>Tipo</div><div>Progresso</div><div>Responsável</div><div>Data</div></div>`;
-  const rows=list.map(c=>{
-    const pct=c.total?Math.round(c.done/c.total*100):0;
-    const col=typeColor[c.tipo]||'#818cf8';
-    return`<div class="cl-row">
-      <div class="cl-name">${c.nome||'—'}</div>
-      <div><span class="cl-badge ${c.tipo}">${typeLabel[c.tipo]||c.tipo}</span></div>
-      <div class="cl-prog">
-        <div class="mini-track"><div class="mini-fill" style="width:${pct}%;background:${col}"></div></div>
-        <span class="mini-pct">${pct}%</span>
-      </div>
-      <div class="cl-func">${c.func||'—'}</div>
-      <div class="cl-date">${fmtDate(c.data)}</div>
-    </div>`;
-  }).join('');
-  document.getElementById('clientesBody').innerHTML = head+rows;
-}
-
-// ═══════════════════════════════════════════════
-//  RENDER RANKING
-// ═══════════════════════════════════════════════
-function renderRanking(byUser){
-  const sorted=Object.values(byUser).sort((a,b)=>b.done-a.done);
-  const max=sorted[0]?.done||1;
-  document.getElementById('rankingBody').innerHTML=sorted.map((u,i)=>`
-    <div class="rk-row">
-      <div class="rk-pos" style="color:${u.color}">${RANKS[i]||i+1+'°'}</div>
-      <div class="rk-av" style="background:${u.color}22;color:${u.color}">${initials(u.label)}</div>
-      <div class="rk-name">${u.label}</div>
-      <div class="rk-bar-wrap"><div class="rk-bar" style="width:${Math.round(u.done/max*100)}%;background:${u.color}"></div></div>
-      <div class="rk-pct" style="color:${u.color}">${u.done}</div>
-      <div class="rk-tasks">${u.clientes.size} clientes</div>
-    </div>`).join('');
-}
-
-// ═══════════════════════════════════════════════
-//  RENDER CARDS
-// ═══════════════════════════════════════════════
-function renderCards(byUser){
-  const maxDone=Math.max(...Object.values(byUser).map(u=>u.done),1);
-  const groupLabels={servidor:'🖥 Servidor',retaguarda:'🗄️ Retaguarda',nfce:'🧾 NFCe'};
-  const groupColors={servidor:'var(--c0)',retaguarda:'var(--c1)',nfce:'var(--green)'};
-
-  document.getElementById('cardsGrid').innerHTML=USERS.map((u,i)=>{
-    const d=byUser[u.key];
-    const pct=maxDone?Math.round(d.done/maxDone*100):0;
-    const bd=badge(pct);
-    const ini=initials(u.label);
-    const nCli=d.clientes.size;
-
-    // group bars
-    const maxG=Math.max(...Object.values(d.groups),1);
-    const gBars=Object.entries(d.groups).map(([g,v])=>`
-      <div class="ugroup-row">
-        <span class="ugroup-lbl">${groupLabels[g]}</span>
-        <div class="ugroup-track"><div class="ugroup-fill" style="width:${Math.round(v/maxG*100)}%;background:${groupColors[g]}"></div></div>
-        <span class="ugroup-pct" style="color:${groupColors[g]}">${v}</span>
-      </div>`).join('');
-
-    // clientes list
-    const cliList=d.clientesData.slice(0,6).map(c=>{
-      const p=c.total?Math.round(c.done/c.total*100):0;
-      return`<div class="ucli-item">
-        <span class="ucli-name">${c.nome||'—'}</span>
-        <span class="ucli-pct" style="color:${u.color}">${p}%</span>
-      </div>`;
-    }).join('');
-
-    return`<div class="ucard">
-      <div class="ucard-top">
-        <div class="av" style="background:${u.color}22;color:${u.color}">${ini}</div>
-        <div class="uinfo">
-          <div class="uname">${u.label}</div>
-          <div class="ubadge ${bd.cls}">${bd.lbl}</div>
-        </div>
-        <div class="uscore" style="color:${u.color}">${d.done}<small>ITENS FEITOS</small></div>
-      </div>
-
-      <div class="uprog">
-        <div class="uprog-meta">
-          <span class="uprog-lbl">vs. maior produtor</span>
-          <span class="uprog-n" style="color:${u.color}">${nCli} cliente${nCli!==1?'s':''}</span>
-        </div>
-        <div class="ptrack"><div class="pfill" style="width:${pct}%;background:linear-gradient(90deg,${u.color}88,${u.color})"></div></div>
-      </div>
-
-      <div class="ustats">
-        <div class="ustat"><div class="ustat-n" style="color:${u.color}">${d.done}</div><div class="ustat-l">CONCLUÍDOS</div></div>
-        <div class="ustat"><div class="ustat-n" style="color:var(--c1)">${nCli}</div><div class="ustat-l">CLIENTES</div></div>
-        <div class="ustat"><div class="ustat-n" style="color:var(--c3)">${nCli?Math.round(d.done/nCli):0}</div><div class="ustat-l">MÉDIA/CLI</div></div>
-      </div>
-
-      <div class="ugroups">${gBars}</div>
-
-      ${cliList?`<div class="ucli">
-        <button class="ucli-btn" onclick="toggleCli(this)">
-          <span>📂 Clientes atendidos (${nCli})</span><span>▾</span>
-        </button>
-        <div class="ucli-list">${cliList}</div>
-      </div>`:''}
-    </div>`;
-  }).join('');
-}
-
-function toggleCli(btn){
-  const l=btn.nextElementSibling;
-  l.classList.toggle('open');
-  btn.querySelector('span:last-child').textContent=l.classList.contains('open')?'▴':'▾';
-}
-
-// ═══════════════════════════════════════════════
-//  INIT
-// ═══════════════════════════════════════════════
-document.getElementById('dateChip').textContent=
-  new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'});
-
-loadAll();
-setInterval(loadAll,60000);
-</script>
-</body>
-</html>
+-- SELECT * FROM vw_resumo_geral;
+-- SELECT * FROM vw_ranking_colaboradores;
+-- SELECT * FROM vw_progresso_clientes LIMIT 10;
