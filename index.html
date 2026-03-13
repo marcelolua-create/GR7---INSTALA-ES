@@ -116,6 +116,7 @@
       display: flex;
       align-items: center;
       gap: 10px;
+      position: relative;
     }
 
     /* ----- MODAL TABS ----- */
@@ -667,6 +668,92 @@
       color: #ffaa00;
     }
 
+    /* ── OBSERVAÇÃO ── */
+    .check-item { flex-wrap: wrap; }
+
+    .obs-area {
+      display: none;
+      width: 100%;
+      padding-top: 10px;
+      margin-top: 8px;
+      border-top: 1px solid #2e2e2e;
+      gap: 8px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+    .obs-area.visible { display: flex; }
+
+    .obs-label {
+      font-size: 11px;
+      color: #ff8c42;
+      font-weight: 700;
+      white-space: nowrap;
+      margin-top: 8px;
+      letter-spacing: .04em;
+    }
+
+    .obs-input {
+      flex: 1;
+      min-width: 180px;
+      background: #1a1a1a;
+      border: 1.5px solid rgba(255,140,66,.35);
+      border-radius: 8px;
+      padding: 7px 11px;
+      color: #ddd;
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+      resize: none;
+      line-height: 1.4;
+      transition: border-color .2s;
+    }
+    .obs-input:focus { border-color: rgba(255,140,66,.75); }
+    .obs-input::placeholder { color: #555; }
+
+    .obs-save-btn {
+      background: rgba(255,140,66,.15);
+      border: 1.5px solid rgba(255,140,66,.4);
+      border-radius: 8px;
+      padding: 7px 14px;
+      color: #ff8c42;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all .2s;
+      white-space: nowrap;
+      align-self: flex-end;
+    }
+    .obs-save-btn:hover { background: rgba(255,140,66,.28); }
+    .obs-save-btn:disabled { opacity: .5; cursor: default; }
+
+    .obs-saved-tag {
+      font-size: 11px;
+      color: #00e5a0;
+      align-self: flex-end;
+      margin-bottom: 8px;
+      display: none;
+    }
+    .obs-saved-tag.show { display: block; }
+
+    .obs-toggle-btn {
+      background: transparent;
+      border: 1px solid #3a3a3a;
+      border-radius: 6px;
+      padding: 4px 9px;
+      color: #666;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all .2s;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .obs-toggle-btn:hover { border-color: #ff8c42; color: #ff8c42; }
+    .obs-toggle-btn.has-obs {
+      border-color: rgba(255,140,66,.5);
+      color: #ff8c42;
+      background: rgba(255,140,66,.08);
+    }
+
     /* ----- PROGRESS BAR ----- */
     .progress-bar-wrap {
       background: #2a2a2a;
@@ -763,7 +850,10 @@
   <!-- --------------------------- MODAL NOVO CLIENTE --------------------------- -->
   <div class="modal-overlay active" id="modalOverlay">
     <div class="modal">
-      <div class="modal-title">📝 Checklist GR7</div>
+      <div class="modal-title">
+        <span>📝 Checklist GR7</span>
+        <button onclick="voltarDashboard()" title="Voltar ao Dashboard" style="margin-left:auto;background:transparent;border:1px solid #444;border-radius:8px;color:#888;font-size:16px;width:32px;height:32px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0" onmouseover="this.style.borderColor='#f87171';this.style.color='#f87171'" onmouseout="this.style.borderColor='#444';this.style.color='#888'">✕</button>
+      </div>
 
       <!-- Tabs -->
       <div class="modal-tabs">
@@ -1273,13 +1363,6 @@
       document.getElementById('sectionNovo').classList.toggle('active', tab === 'novo');
       document.getElementById('sectionRetomar').classList.toggle('active', tab === 'retomar');
       if (tab === 'retomar') {
-        const name = await requestResponsibleForRetomar();
-        if (name && name.trim()) {
-          pendingResumeResponsible = name.trim();
-          setCurrentUserName(pendingResumeResponsible);
-        } else {
-          pendingResumeResponsible = '';
-        }
         loadClientsList();
       }
     }
@@ -1299,6 +1382,16 @@
       document.getElementById('btnServidor').classList.toggle('active', type === 'Servidor');
       document.getElementById('btnRetaguarda').classList.toggle('active', type === 'Retaguarda');
       document.getElementById('btnNFCe').classList.toggle('active', type === 'NFCe / Caixa');
+    }
+
+    function voltarDashboard() {
+      // Tenta fechar a aba (se foi aberta pelo dashboard)
+      // Se não conseguir, redireciona para index.html
+      if (window.opener && !window.opener.closed) {
+        window.close();
+      } else {
+        window.location.href = 'index.html';
+      }
     }
 
     function cancelModal() {
@@ -1430,6 +1523,15 @@
     //  RETOMAR CLIENTE EXISTENTE
     // ------------------------------------------
     async function resumeClient(c) {
+      // Pergunta quem é o técnico AGORA que escolheu a atividade
+      const name = await requestResponsibleForRetomar();
+      if (name && name.trim()) {
+        pendingResumeResponsible = name.trim();
+        setCurrentUserName(pendingResumeResponsible);
+      } else {
+        pendingResumeResponsible = '';
+      }
+
       document.getElementById('clientsList').innerHTML =
         '<div class="clients-loading"><div class="spinner" style="margin:0 auto 10px"></div>Carregando progresso...</div>';
 
@@ -1460,7 +1562,6 @@
         showToast('Erro ao carregar progresso: ' + error.message, 'error');
       } else if (progresso && progresso.length > 0) {
         progresso.forEach(p => {
-          // Seletor compatível com ambos os grupos (servidor usa list-servidor-steps)
           const selectors = [
             `#list-${p.grupo}-steps .check-item[data-num="${p.item_num}"]`,
             `#list-${p.grupo} .check-item[data-num="${p.item_num}"]`
@@ -1471,6 +1572,13 @@
               el.classList.add('done');
               const by = p.marcado_por || (currentClientId ? getItemMeta(currentClientId, p.grupo, p.item_num)?.by : null);
               if (by) updateItemBadge(el, by);
+              // Restaurar observação
+              if (p.observacao) {
+                const obsInput = el.querySelector('.obs-input');
+                const obsBtn   = el.querySelector('.obs-toggle-btn');
+                if (obsInput) obsInput.value = p.observacao;
+                if (obsBtn)   { obsBtn.classList.add('has-obs'); obsBtn.title = p.observacao; }
+              }
             }
           });
         });
@@ -1526,8 +1634,11 @@
       const div = document.createElement('div');
       div.className = 'check-item' + (isExtra ? ' extra-step' : '');
       div.dataset.group = group;
-      div.dataset.num = String(num);   // ? necessário para restaurar progresso
-      div.onclick = function () { toggle(this); };
+      div.dataset.num = String(num);
+      div.onclick = function (e) {
+        if (e.target.closest('.obs-area') || e.target.closest('.obs-toggle-btn')) return;
+        toggle(this);
+      };
 
       div.innerHTML = `
     <div class="check-box">✓</div>
@@ -1538,9 +1649,65 @@
     <div class="item-meta">
       <span class="item-resp-badge" title="Marcado por"></span>
       ${manual ? `<a class="item-manual" href="${manual}" target="_blank" onclick="event.stopPropagation()">📖 Manual</a>` : ''}
+      <button class="obs-toggle-btn" onclick="event.stopPropagation(); toggleObs(this)" title="Adicionar observação">💬 Obs</button>
+    </div>
+    <div class="obs-area">
+      <span class="obs-label">⚠️ Motivo:</span>
+      <textarea class="obs-input" rows="2" placeholder="Explique o motivo de não realizar esta etapa…" onclick="event.stopPropagation()"></textarea>
+      <button class="obs-save-btn" onclick="event.stopPropagation(); saveObs(this)">Salvar</button>
+      <span class="obs-saved-tag">✓ Salvo</span>
     </div>
   `;
       return div;
+    }
+
+    function toggleObs(btn) {
+      const area = btn.closest('.check-item').querySelector('.obs-area');
+      area.classList.toggle('visible');
+      if (area.classList.contains('visible')) area.querySelector('.obs-input').focus();
+    }
+
+    async function saveObs(btn) {
+      const area   = btn.closest('.obs-area');
+      const item   = btn.closest('.check-item');
+      const input  = area.querySelector('.obs-input');
+      const tag    = area.querySelector('.obs-saved-tag');
+      const obsBtn = item.querySelector('.obs-toggle-btn');
+      const obs    = input.value.trim();
+      const group  = item.dataset.group || currentTab;
+      const itemNum = item.dataset.num;
+
+      if (!currentClientId) { showToast('Abra um cliente antes de salvar.', 'error'); return; }
+
+      btn.disabled = true;
+      btn.textContent = '…';
+
+      const { error } = await dbUpsert(
+        'checklist_progresso',
+        {
+          cliente_id: currentClientId,
+          grupo: group,
+          item_num: itemNum,
+          concluido: item.classList.contains('done'),
+          observacao: obs,
+          marcado_por: currentUserName || '—',
+          marcado_em: new Date().toISOString()
+        },
+        'cliente_id,grupo,item_num'
+      );
+
+      btn.disabled = false;
+      btn.textContent = 'Salvar';
+
+      if (error) {
+        showToast('Erro ao salvar obs: ' + error.message, 'error');
+      } else {
+        tag.classList.add('show');
+        setTimeout(() => tag.classList.remove('show'), 2500);
+        if (obs) { obsBtn.classList.add('has-obs'); obsBtn.title = obs; }
+        else     { obsBtn.classList.remove('has-obs'); obsBtn.title = 'Adicionar observação'; }
+        showToast('Observação salva!', 'success');
+      }
     }
 
     // ------------------------------------------
