@@ -1,218 +1,1780 @@
--- ============================================================
---  GR7 — MIGRAÇÃO SEGURA (não apaga dados existentes)
---  Execute no Supabase > SQL Editor
--- ============================================================
+<!DOCTYPE html>
+<html lang="pt-BR">
 
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Checklist GR7</title>
 
--- ============================================================
---  1. ADICIONAR colunas que faltam em checklist_progresso
--- ============================================================
-ALTER TABLE checklist_progresso
-  ADD COLUMN IF NOT EXISTS marcado_por TEXT,
-  ADD COLUMN IF NOT EXISTS marcado_em  TIMESTAMPTZ DEFAULT NOW();
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
+    body {
+      background: #1a1a1a;
+      color: #e0e0e0;
+      font-family: 'Segoe UI', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', 'Apple Color Emoji', sans-serif;
+      min-height: 100vh;
+    }
 
--- ============================================================
---  2. ADICIONAR colunas que faltam em clientes (se não existir)
--- ============================================================
-ALTER TABLE clientes
-  ADD COLUMN IF NOT EXISTS computador TEXT,
-  ADD COLUMN IF NOT EXISTS criado_em  TIMESTAMPTZ DEFAULT NOW();
+    /* ----- TOAST ----- */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #2a2a2a;
+      border: 1px solid #333;
+      border-radius: 10px;
+      padding: 12px 18px;
+      font-size: 13px;
+      color: #ccc;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 9999;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: all 0.3s;
+      max-width: 320px;
+    }
 
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
 
--- ============================================================
---  3. TABELA: colaboradores (cria se não existir)
--- ============================================================
-CREATE TABLE IF NOT EXISTS colaboradores (
-  id        SERIAL PRIMARY KEY,
-  nome      TEXT NOT NULL,
-  cor       TEXT DEFAULT '#818cf8',
-  ativo     BOOLEAN DEFAULT TRUE,
-  criado_em TIMESTAMPTZ DEFAULT NOW()
-);
+    .toast.success {
+      border-color: rgba(0, 229, 160, 0.4);
+    }
 
-INSERT INTO colaboradores (nome, cor) VALUES
-  ('João',     '#818cf8'),
-  ('Bruno',    '#38bdf8'),
-  ('Samuel',   '#34d399'),
-  ('Marcelo',  '#fbbf24'),
-  ('Pabllo',   '#f87171'),
-  ('Vinicius', '#e879f9')
-ON CONFLICT DO NOTHING;
+    .toast.error {
+      border-color: rgba(255, 80, 80, 0.4);
+      color: #ff8080;
+    }
 
+    /* ----- MODAL OVERLAY ----- */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
 
--- ============================================================
---  4. TABELA: checklist_steps (cria se não existir)
--- ============================================================
-CREATE TABLE IF NOT EXISTS checklist_steps (
-  id    SERIAL PRIMARY KEY,
-  grupo TEXT NOT NULL,
-  num   INT  NOT NULL,
-  texto TEXT NOT NULL,
-  UNIQUE (grupo, num)
-);
+    .modal-overlay.active {
+      display: flex;
+    }
 
--- Steps SERVIDOR
-INSERT INTO checklist_steps (grupo, num, texto) VALUES
-  ('servidor',  1,  'Preparar acesso pelo AnyDesk'),
-  ('servidor',  2,  'Instalar o Master Remote no cliente'),
-  ('servidor',  3,  'Transferir arquivos GR7 pelo Master'),
-  ('servidor',  4,  'Ajustes rápidos no Windows'),
-  ('servidor',  5,  'Pastas na Área de Trabalho'),
-  ('servidor',  6,  '(Se possível) Renomear o computador'),
-  ('servidor',  7,  'Compartilhamento de redes do Windows'),
-  ('servidor',  8,  'Fixar pastas no Acesso Rápido'),
-  ('servidor',  9,  '(Se dedicado) Instalar WASSetup (Wise Auto Shutdown)'),
-  ('servidor',  10, 'Instalar e definir Notepad++'),
-  ('servidor',  11, 'Instalar a fonte dos relatórios'),
-  ('servidor',  12, 'Copiar o registro do cliente'),
-  ('servidor',  14, 'Restaurar a base no Administrator'),
-  ('servidor',  15, 'Compartilhar pastas do servidor'),
-  ('servidor',  16, 'Ajustar Demo.ini e config.ini'),
-  ('servidor',  17, 'Criar atalhos GR7 e organizar'),
-  ('servidor',  18, 'Configurar diretórios no Retaguarda'),
-  ('servidor',  19, 'Rodar o ATUALIZA GR7'),
-  ('servidor',  20, 'Configurar o Verificador GR7 na inicialização'),
-  ('servidor',  21, 'Instalando WebCharts e ServerMobile como serviço'),
-  ('servidor',  22, 'Criando e Configurando Rotina de Backup MySQL'),
-  ('servidor',  23, 'Criar exceções no Windows Defender')
-ON CONFLICT (grupo, num) DO NOTHING;
+    .modal {
+      background: #2a2a2a;
+      border-radius: 12px;
+      padding: 32px;
+      width: 560px;
+      max-width: 95vw;
+      max-height: 90vh;
+      overflow-y: auto;
+      position: relative;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
 
--- Steps RETAGUARDA
-INSERT INTO checklist_steps (grupo, num, texto) VALUES
-  ('retaguarda',  1,  'Preparar acesso pelo AnyDesk'),
-  ('retaguarda',  2,  'Instalar o Master Remote no cliente'),
-  ('retaguarda',  3,  'Transferir arquivos GR7 pelo Master'),
-  ('retaguarda',  4,  'Ajustes rápidos no Windows'),
-  ('retaguarda',  5,  'Pastas na Área de Trabalho'),
-  ('retaguarda',  6,  '(Se possível) Renomear o computador'),
-  ('retaguarda',  7,  'Compartilhamento de redes do Windows'),
-  ('retaguarda',  8,  'Fixar pastas no Acesso Rápido'),
-  ('retaguarda',  9,  'Instalar a fonte dos relatórios'),
-  ('retaguarda',  10, 'Atualizar Registro e colocar no Servidor'),
-  ('retaguarda',  11, 'Instalar MySQL Manager'),
-  ('retaguarda',  12, 'Ajustar Demo.ini e config.ini'),
-  ('retaguarda',  13, 'Criar atalhos GR7 e organizar'),
-  ('retaguarda',  14, 'Rodar o ATUALIZA GR7'),
-  ('retaguarda',  15, 'Configurar o ATUALIZA GR7 na inicialização'),
-  ('retaguarda',  16, 'Permissão para acessar rede compartilhada / Credenciais do Windows'),
-  ('retaguarda',  17, 'Configurando periféricos no Sistema GR7 (Caso tenha Impressora/Etiqueta)'),
-  ('retaguarda',  18, 'Criar exceções no Windows Defender')
-ON CONFLICT (grupo, num) DO NOTHING;
+    .who-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      border-radius: 12px;
+      z-index: 10;
+      padding: 18px;
+    }
 
--- Steps NFCe
-INSERT INTO checklist_steps (grupo, num, texto) VALUES
-  ('nfce',  1,  'Preparar acesso pelo AnyDesk'),
-  ('nfce',  2,  'Instalar o Master Remote no cliente'),
-  ('nfce',  3,  'Transferir arquivos GR7 pelo Master'),
-  ('nfce',  4,  'Ajustes rápidos no Windows'),
-  ('nfce',  5,  'Pastas na Área de Trabalho'),
-  ('nfce',  6,  '(Se possível) Renomear o computador'),
-  ('nfce',  7,  'Compartilhamento de redes do Windows'),
-  ('nfce',  8,  'Fixar pastas no Acesso Rápido'),
-  ('nfce',  9,  'Atualizar Registro e colocar no Servidor'),
-  ('nfce',  11, 'Restaurar a base no Administrator'),
-  ('nfce',  12, 'Ajustar Demo.ini e config.ini'),
-  ('nfce',  13, 'Criar atalhos GR7 e organizar'),
-  ('nfce',  15, 'Configurar o ATUALIZA GR7 na inicialização'),
-  ('nfce',  16, 'Configurando periféricos no Sistema GR7 (Caso tenha Impressora/Balança)'),
-  ('nfce',  17, 'Instalando fonte para relatório (Caso vá usar Retaguarda)'),
-  ('nfce',  18, 'Criar exceções no Windows Defender')
-ON CONFLICT (grupo, num) DO NOTHING;
+    .who-overlay.active {
+      display: flex;
+    }
 
+    .who-card {
+      width: 100%;
+      max-width: 420px;
+      background: #2a2a2a;
+      border: 1.5px solid #3a3a3a;
+      border-radius: 12px;
+      padding: 22px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
 
--- ============================================================
---  5. ÍNDICES para performance
--- ============================================================
-CREATE INDEX IF NOT EXISTS idx_progresso_cliente_id  ON checklist_progresso (cliente_id);
-CREATE INDEX IF NOT EXISTS idx_progresso_marcado_por ON checklist_progresso (marcado_por);
-CREATE INDEX IF NOT EXISTS idx_progresso_concluido   ON checklist_progresso (concluido);
-CREATE INDEX IF NOT EXISTS idx_progresso_grupo       ON checklist_progresso (grupo);
-CREATE INDEX IF NOT EXISTS idx_clientes_funcionario  ON clientes (funcionario);
-CREATE INDEX IF NOT EXISTS idx_clientes_tipo         ON clientes (tipo);
+    .modal-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
 
+    /* ----- MODAL TABS ----- */
+    .modal-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+      border: 1.5px solid #3a3a3a;
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
 
--- ============================================================
---  6. VIEW: vw_progresso_clientes
--- ============================================================
-CREATE OR REPLACE VIEW vw_progresso_clientes AS
-SELECT
-  c.id,
-  c.nome,
-  c.tipo,
-  c.funcionario,
-  c.data,
-  c.criado_em,
-  CASE
-    WHEN LOWER(c.tipo) LIKE '%retaguarda%' THEN 18
-    WHEN LOWER(c.tipo) LIKE '%nfce%'       THEN 16
-    WHEN LOWER(c.tipo) LIKE '%nf-ce%'      THEN 16
-    ELSE 22
-  END AS total_steps,
-  COUNT(p.id) FILTER (WHERE p.concluido = TRUE) AS steps_concluidos,
-  ROUND(
-    COUNT(p.id) FILTER (WHERE p.concluido = TRUE)::NUMERIC
-    / NULLIF(CASE
-        WHEN LOWER(c.tipo) LIKE '%retaguarda%' THEN 18
-        WHEN LOWER(c.tipo) LIKE '%nfce%'       THEN 16
-        WHEN LOWER(c.tipo) LIKE '%nf-ce%'      THEN 16
-        ELSE 22
-      END, 0) * 100
-  , 1) AS percentual
-FROM clientes c
-LEFT JOIN checklist_progresso p ON p.cliente_id = c.id
-GROUP BY c.id, c.nome, c.tipo, c.funcionario, c.data, c.criado_em
-ORDER BY c.criado_em DESC;
+    .modal-tab-btn {
+      background: transparent;
+      border: none;
+      padding: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #666;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
 
+    .modal-tab-btn.active {
+      background: rgba(0, 229, 160, 0.1);
+      color: #00e5a0;
+    }
 
--- ============================================================
---  7. VIEW: vw_ranking_colaboradores
--- ============================================================
-CREATE OR REPLACE VIEW vw_ranking_colaboradores AS
-SELECT
-  p.marcado_por                                                          AS colaborador,
-  COUNT(*)        FILTER (WHERE p.concluido = TRUE)                     AS total_concluidos,
-  COUNT(DISTINCT p.cliente_id)                                          AS total_clientes,
-  COUNT(*)        FILTER (WHERE p.concluido = TRUE AND p.grupo = 'servidor')   AS servidor,
-  COUNT(*)        FILTER (WHERE p.concluido = TRUE AND p.grupo = 'retaguarda') AS retaguarda,
-  COUNT(*)        FILTER (WHERE p.concluido = TRUE AND p.grupo = 'nfce')       AS nfce,
-  ROUND(
-    COUNT(*) FILTER (WHERE p.concluido = TRUE)::NUMERIC
-    / NULLIF(COUNT(DISTINCT p.cliente_id), 0)
-  , 1)                                                                   AS media_por_cliente,
-  MAX(p.marcado_em)                                                      AS ultima_atividade
-FROM checklist_progresso p
-WHERE p.marcado_por IS NOT NULL
-  AND p.marcado_por <> ''
-  AND p.marcado_por <> '—'
-GROUP BY p.marcado_por
-ORDER BY total_concluidos DESC;
+    .modal-tab-btn:first-child {
+      border-right: 1.5px solid #3a3a3a;
+    }
 
+    .modal-section {
+      display: none;
+    }
 
--- ============================================================
---  8. VIEW: vw_resumo_geral
--- ============================================================
-CREATE OR REPLACE VIEW vw_resumo_geral AS
-SELECT
-  COUNT(DISTINCT c.id)                                            AS total_clientes,
-  COUNT(p.id) FILTER (WHERE p.concluido = TRUE)                  AS total_concluidos,
-  COUNT(p.id) FILTER (WHERE p.concluido = FALSE OR p.id IS NULL) AS total_pendentes,
-  ROUND(
-    COUNT(p.id) FILTER (WHERE p.concluido = TRUE)::NUMERIC
-    / NULLIF(COUNT(p.id), 0) * 100
-  , 1)                                                            AS percentual_geral
-FROM clientes c
-LEFT JOIN checklist_progresso p ON p.cliente_id = c.id;
+    .modal-section.active {
+      display: block;
+    }
 
+    .form-group {
+      margin-bottom: 16px;
+    }
 
--- ============================================================
---  VERIFICAÇÃO FINAL — rode após o script para confirmar
--- ============================================================
--- SELECT column_name, data_type
--- FROM information_schema.columns
--- WHERE table_name = 'checklist_progresso'
--- ORDER BY ordinal_position;
+    .form-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #888;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+      display: block;
+    }
 
--- SELECT * FROM vw_resumo_geral;
--- SELECT * FROM vw_ranking_colaboradores;
--- SELECT * FROM vw_progresso_clientes LIMIT 10;
+    .form-input {
+      width: 100%;
+      background: #1e1e1e;
+      border: 1.5px solid #3a3a3a;
+      border-radius: 8px;
+      padding: 12px 14px;
+      color: #fff;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .form-input:focus {
+      border-color: #00e5a0;
+    }
+
+    .form-input::placeholder {
+      color: #555;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .type-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+      margin-top: 4px;
+    }
+
+    .type-btn {
+      background: #1e1e1e;
+      border: 1.5px solid #3a3a3a;
+      border-radius: 8px;
+      padding: 12px;
+      color: #ccc;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .type-btn.active {
+      border-color: #00e5a0;
+      background: rgba(0, 229, 160, 0.08);
+      color: #00e5a0;
+    }
+
+    .modal-actions {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 10px;
+      margin-top: 24px;
+    }
+
+    .btn-cancel {
+      background: transparent;
+      border: 1.5px solid #3a3a3a;
+      border-radius: 8px;
+      padding: 12px;
+      color: #ccc;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-cancel:hover {
+      border-color: #666;
+      color: #fff;
+    }
+
+    .btn-create {
+      background: #00e5a0;
+      border: none;
+      border-radius: 8px;
+      padding: 12px;
+      color: #000;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-create:hover {
+      background: #00ffb3;
+    }
+
+    .btn-create:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* ----- LISTA CLIENTES RECENTES ----- */
+    .clients-loading {
+      text-align: center;
+      padding: 32px;
+      color: #555;
+      font-size: 14px;
+    }
+
+    .clients-empty {
+      text-align: center;
+      padding: 32px;
+      color: #555;
+      font-size: 14px;
+    }
+
+    .clients-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .client-row {
+      background: #1e1e1e;
+      border: 1.5px solid #333;
+      border-radius: 10px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .client-row:hover {
+      border-color: #00e5a0;
+      background: rgba(0, 229, 160, 0.04);
+    }
+
+    .client-row-info {
+      flex: 1;
+    }
+
+    .client-row-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+
+    .client-row-meta {
+      font-size: 11px;
+      color: #555;
+      display: flex;
+      gap: 12px;
+    }
+
+    .client-row-badge {
+      background: rgba(0, 229, 160, 0.12);
+      color: #00e5a0;
+      border: 1px solid rgba(0, 229, 160, 0.25);
+      border-radius: 20px;
+      padding: 3px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    .client-row-arrow {
+      color: #444;
+      font-size: 18px;
+    }
+
+    .search-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #1e1e1e;
+      border: 1.5px solid #3a3a3a;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 14px;
+    }
+
+    .search-box input {
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #fff;
+      font-size: 14px;
+      flex: 1;
+    }
+
+    .search-box input::placeholder {
+      color: #555;
+    }
+
+    /* ----- MAIN APP ----- */
+    .app {
+      display: none;
+    }
+
+    .app.active {
+      display: block;
+    }
+
+    /* ----- TOP BAR ----- */
+    .topbar {
+      background: #222;
+      border-bottom: 1px solid #333;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      gap: 0;
+      height: 52px;
+    }
+
+    .client-info {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-right: auto;
+    }
+
+    .client-name {
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .client-badge {
+      background: rgba(0, 229, 160, 0.15);
+      color: #00e5a0;
+      border: 1px solid rgba(0, 229, 160, 0.3);
+      border-radius: 20px;
+      padding: 3px 10px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .topbar-btn {
+      background: transparent;
+      border: 1.5px solid #3a3a3a;
+      border-radius: 8px;
+      padding: 6px 14px;
+      color: #aaa;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-right: 16px;
+      white-space: nowrap;
+    }
+
+    .topbar-btn:hover {
+      border-color: #666;
+      color: #fff;
+    }
+
+    /* save indicator */
+    .save-indicator {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #444;
+      flex-shrink: 0;
+      margin-right: 8px;
+      transition: background 0.3s;
+    }
+
+    .save-indicator.saving {
+      background: #ffaa00;
+    }
+
+    .save-indicator.saved {
+      background: #00e5a0;
+    }
+
+    .save-indicator.error {
+      background: #ff5050;
+    }
+
+    /* ----- TABS ----- */
+    .tabs {
+      display: flex;
+      gap: 0;
+      height: 100%;
+      align-items: flex-end;
+    }
+
+    .current-user {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-right: 16px;
+      color: #aaa;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .tab {
+      padding: 0 20px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #666;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .tab:hover {
+      color: #aaa;
+    }
+
+    .tab.active {
+      color: #00e5a0;
+      border-bottom-color: #00e5a0;
+    }
+
+    /* ----- CONTENT ----- */
+    .content {
+      padding: 28px 28px;
+      max-width: 860px;
+    }
+
+    .tab-panel {
+      display: none;
+    }
+
+    .tab-panel.active {
+      display: block;
+    }
+
+    /* ----- SECTION TITLE ----- */
+    .section-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #333;
+      margin-left: 8px;
+    }
+
+    /* ----- CHECKLIST ITEMS ----- */
+    .checklist {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .check-item {
+      background: #252525;
+      border: 1px solid #333;
+      border-radius: 10px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+    }
+
+    .check-item:hover {
+      border-color: #444;
+      background: #2a2a2a;
+    }
+
+    .check-item.done {
+      opacity: 0.5;
+    }
+
+    .check-item.done .item-text {
+      text-decoration: line-through;
+      color: #666;
+    }
+
+    .check-box {
+      width: 22px;
+      height: 22px;
+      border: 2px solid #444;
+      border-radius: 6px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      font-size: 13px;
+      color: transparent;
+    }
+
+    .check-item.done .check-box {
+      background: #00e5a0;
+      border-color: #00e5a0;
+      color: #000;
+    }
+
+    .item-number {
+      font-size: 11px;
+      font-weight: 700;
+      color: #555;
+      min-width: 20px;
+    }
+
+    .check-item.done .item-number {
+      color: #444;
+    }
+
+    .item-content {
+      flex: 1;
+    }
+
+    .item-text {
+      font-size: 14px;
+      color: #ddd;
+      font-weight: 500;
+      margin-bottom: 2px;
+    }
+
+    .item-manual {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      color: #00e5a0;
+      text-decoration: none;
+      padding: 4px 10px;
+      border: 1px solid rgba(0, 229, 160, 0.25);
+      border-radius: 20px;
+      white-space: nowrap;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+
+    .item-manual:hover {
+      background: rgba(0, 229, 160, 0.1);
+      border-color: rgba(0, 229, 160, 0.5);
+    }
+
+    .item-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .item-resp-badge {
+      font-size: 11px;
+      color: #00e5a0;
+      background: rgba(0, 229, 160, 0.08);
+      border: 1px solid rgba(0, 229, 160, 0.25);
+      border-radius: 20px;
+      padding: 4px 10px;
+      display: none;
+    }
+
+    /* Extra step highlight */
+    .check-item.extra-step {
+      border-color: rgba(255, 170, 0, 0.3);
+      background: rgba(255, 170, 0, 0.05);
+    }
+
+    .check-item.extra-step .item-number {
+      color: #ffaa00;
+    }
+
+    /* ----- OBSERVAÇÃO / MOTIVO ----- */
+    .obs-area {
+      display: none;
+      margin-top: 10px;
+      width: 100%;
+      padding-top: 10px;
+      border-top: 1px solid #333;
+    }
+
+    .obs-area.visible {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .obs-label {
+      font-size: 11px;
+      color: #ff8c42;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+      margin-top: 8px;
+    }
+
+    .obs-input {
+      flex: 1;
+      min-width: 180px;
+      background: #1a1a1a;
+      border: 1.5px solid rgba(255, 140, 66, 0.35);
+      border-radius: 8px;
+      padding: 7px 12px;
+      color: #ddd;
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+      resize: none;
+      transition: border-color 0.2s;
+      line-height: 1.4;
+    }
+
+    .obs-input:focus {
+      border-color: rgba(255, 140, 66, 0.7);
+    }
+
+    .obs-input::placeholder {
+      color: #555;
+    }
+
+    .obs-save-btn {
+      background: rgba(255, 140, 66, 0.15);
+      border: 1.5px solid rgba(255, 140, 66, 0.4);
+      border-radius: 8px;
+      padding: 7px 14px;
+      color: #ff8c42;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+      align-self: flex-end;
+    }
+
+    .obs-save-btn:hover {
+      background: rgba(255, 140, 66, 0.28);
+      border-color: rgba(255, 140, 66, 0.7);
+    }
+
+    .obs-saved-tag {
+      font-size: 11px;
+      color: #00e5a0;
+      display: none;
+      align-self: flex-end;
+      margin-bottom: 8px;
+    }
+
+    .obs-saved-tag.show {
+      display: block;
+    }
+
+    /* botão de obs no item */
+    .obs-toggle-btn {
+      background: transparent;
+      border: 1px solid #444;
+      border-radius: 6px;
+      padding: 4px 9px;
+      color: #888;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .obs-toggle-btn:hover {
+      border-color: #ff8c42;
+      color: #ff8c42;
+    }
+
+    .obs-toggle-btn.has-obs {
+      border-color: rgba(255, 140, 66, 0.5);
+      color: #ff8c42;
+      background: rgba(255, 140, 66, 0.08);
+    }
+
+    /* item vira coluna quando obs está aberta */
+    .check-item {
+      flex-wrap: wrap;
+    }
+
+    /* ----- PROGRESS BAR ----- */
+    .progress-bar-wrap {
+      background: #2a2a2a;
+      border: 1px solid #333;
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .progress-track {
+      flex: 1;
+      height: 6px;
+      background: #1a1a1a;
+      border-radius: 99px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #00e5a0, #00b37a);
+      border-radius: 99px;
+      transition: width 0.4s ease;
+    }
+
+    .progress-text {
+      font-size: 13px;
+      font-weight: 700;
+      color: #00e5a0;
+      white-space: nowrap;
+    }
+
+    .progress-label {
+      font-size: 12px;
+      color: #666;
+    }
+
+    /* ----- INFO PANEL ----- */
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .info-card {
+      background: #252525;
+      border: 1px solid #333;
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+
+    .info-card-label {
+      font-size: 10px;
+      font-weight: 700;
+      color: #555;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 6px;
+    }
+
+    .info-card-value {
+      font-size: 14px;
+      font-weight: 600;
+      color: #ddd;
+    }
+
+    /* spinner */
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid #333;
+      border-top-color: #00e5a0;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- --------------------------- TOAST --------------------------- -->
+  <div class="toast" id="toast"></div>
+
+  <!-- --------------------------- MODAL NOVO CLIENTE --------------------------- -->
+  <div class="modal-overlay active" id="modalOverlay">
+    <div class="modal">
+      <div class="modal-title">📝 Checklist GR7</div>
+
+      <!-- Tabs -->
+      <div class="modal-tabs">
+        <button class="modal-tab-btn active" id="tabNovoBtn" onclick="showModalTab('novo')">➕ Novo Cliente</button>
+        <button class="modal-tab-btn" id="tabRetomarBtn" onclick="showModalTab('retomar')">🔄 Retomar</button>
+      </div>
+
+      <div class="who-overlay" id="whoOverlay" aria-hidden="true">
+        <div class="who-card">
+          <div class="modal-title" style="margin-bottom: 16px">👤 Quem vai retomar?</div>
+          <div class="form-group">
+            <label class="form-label">Responsável</label>
+            <input class="form-input" id="whoName" type="text" placeholder="Ex: João">
+          </div>
+          <div class="modal-actions" style="margin-top: 16px">
+            <button class="btn-cancel" id="whoCancel" type="button">Cancelar</button>
+            <button class="btn-create" id="whoContinue" type="button" disabled>Continuar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- -- Seção: Novo Cliente -- -->
+      <div class="modal-section active" id="sectionNovo">
+        <div class="form-group">
+          <label class="form-label">Nome do Cliente</label>
+          <input class="form-input" id="clientName" type="text" placeholder="Ex: WF Frutaria">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Data</label>
+            <input class="form-input" id="clientDate" type="date">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Nome do Computador</label>
+            <input class="form-input" id="clientPC" type="text" placeholder="DESKTOP-XXXXXXX">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">👤 Funcionário Responsável</label>
+          <input class="form-input" id="clientEmployee" type="text" placeholder="Nome de quem fez a instalação">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Tipo de Instalação</label>
+          <div class="type-buttons">
+            <button class="type-btn active" id="btnServidor" onclick="selectType('Servidor')">🖥️ Servidor</button>
+            <button class="type-btn" id="btnRetaguarda" onclick="selectType('Retaguarda')">🗄️ Retaguarda</button>
+            <button class="type-btn" id="btnNFCe" onclick="selectType('NFCe / Caixa')">🧾 NFCe / Caixa</button>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn-cancel" id="btnCancelar" onclick="cancelModal()" style="display:none">Cancelar</button>
+          <button class="btn-create" id="btnCriar" onclick="createClient()" style="grid-column: 1 / -1">
+            🚀 Criar e Iniciar Checklist
+          </button>
+        </div>
+      </div>
+
+      <!-- -- Seção: Retomar -- -->
+      <div class="modal-section" id="sectionRetomar">
+        <div class="search-box">
+          <span>🔍</span>
+          <input type="text" id="searchClients" placeholder="Buscar cliente..." oninput="filterClients(this.value)">
+        </div>
+        <div id="clientsList" class="clients-loading">
+          <div class="spinner" style="margin: 0 auto 10px"></div>
+          Carregando clientes...
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- --------------------------- APP --------------------------- -->
+  <div class="app" id="app">
+
+    <!-- TOP BAR -->
+    <div class="topbar">
+      <div class="client-info">
+        <div class="save-indicator" id="saveIndicator" title="Status de sincronização"></div>
+        <span class="client-name" id="displayName">—</span>
+        <span class="client-badge" id="displayType">—</span>
+      </div>
+      <div class="current-user">
+        <span>👤 Responsável:</span>
+        <strong id="currentUserName">—</strong>
+      </div>
+      <button class="topbar-btn" onclick="openModal()">? Novo / Trocar</button>
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab('servidor')">🖥️ Servidor</div>
+        <div class="tab" onclick="switchTab('retaguarda')">🗄️ Retaguarda</div>
+        <div class="tab" onclick="switchTab('nfce')">🧾 NFCe / Caixa</div>
+      </div>
+    </div>
+
+    <!-- --- CONTEÚDO --- -->
+    <div class="content">
+
+      <!-- INFO CARDS -->
+      <div class="info-grid">
+        <div class="info-card">
+          <div class="info-card-label">Cliente</div>
+          <div class="info-card-value" id="infoName">—</div>
+        </div>
+        <div class="info-card">
+          <div class="info-card-label">Data</div>
+          <div class="info-card-value" id="infoDate">—</div>
+        </div>
+        <div class="info-card">
+          <div class="info-card-label">Computador</div>
+          <div class="info-card-value" id="infoPC">—</div>
+        </div>
+        <div class="info-card">
+          <div class="info-card-label">Responsável</div>
+          <div class="info-card-value" id="infoEmployee">—</div>
+        </div>
+      </div>
+
+      <!-- ---------- TAB: SERVIDOR ---------- -->
+      <div class="tab-panel active" id="panel-servidor">
+        <div class="progress-bar-wrap">
+          <span class="progress-label">Progresso</span>
+          <div class="progress-track">
+            <div class="progress-fill" id="prog-servidor" style="width:0%"></div>
+          </div>
+          <span class="progress-text" id="prog-servidor-text">0%</span>
+        </div>
+        <div class="section-title">🖥️ Instalação Servidor GR7</div>
+        <div class="checklist" id="list-servidor-steps"></div>
+      </div>
+
+      <!-- ---------- TAB: RETAGUARDA ---------- -->
+      <div class="tab-panel" id="panel-retaguarda">
+        <div class="progress-bar-wrap">
+          <span class="progress-label">Progresso</span>
+          <div class="progress-track">
+            <div class="progress-fill" id="prog-retaguarda" style="width:0%"></div>
+          </div>
+          <span class="progress-text" id="prog-retaguarda-text">0%</span>
+        </div>
+        <div class="section-title">🗄️ Instalação Retaguarda GR7</div>
+        <div class="checklist" id="list-retaguarda"></div>
+      </div>
+
+      <!-- ---------- TAB: NFCe ---------- -->
+      <div class="tab-panel" id="panel-nfce">
+        <div class="progress-bar-wrap">
+          <span class="progress-label">Progresso</span>
+          <div class="progress-track">
+            <div class="progress-fill" id="prog-nfce" style="width:0%"></div>
+          </div>
+          <span class="progress-text" id="prog-nfce-text">0%</span>
+        </div>
+        <div class="section-title">🧾 Instalação NFCe / Caixa GR7</div>
+        <div class="checklist" id="list-nfce"></div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /app -->
+
+  <script>
+    // ------------------------------------------
+    //  SUPABASE REST API — sem SDK
+    // ------------------------------------------
+    const SUPABASE_URL = 'https://nhzjkahbkeusgntheyug.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5oemprYWhia2V1c2dudGhleXVnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyNjYwMDQsImV4cCI6MjA4ODg0MjAwNH0.hB2bJBMoJoztuNrb4xCRIgWmwMlayBpVOMWq3mI4nH4';
+
+    const HEADERS = {
+      'Content-Type': 'application/json',
+      'apikey': SUPABASE_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_KEY,
+      'Prefer': 'return=representation'
+    };
+
+    // INSERT numa tabela, retorna { data, error }
+    async function dbInsert(table, body) {
+      try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+          method: 'POST',
+          headers: HEADERS,
+          body: JSON.stringify(body)
+        });
+        const json = await res.json();
+        if (!res.ok) return { data: null, error: json };
+        const row = Array.isArray(json) ? json[0] : json;
+        return { data: row, error: null };
+      } catch (e) {
+        return { data: null, error: { message: e.message } };
+      }
+    }
+
+    // SELECT com filtros simples: filters = { coluna: valor, ... }
+    async function dbSelect(table, filters = {}, opts = {}) {
+      try {
+        let url = `${SUPABASE_URL}/rest/v1/${table}?select=*`;
+        for (const [k, v] of Object.entries(filters)) {
+          url += `&${k}=eq.${encodeURIComponent(v)}`;
+        }
+        if (opts.order) url += `&order=${opts.order}`;
+        if (opts.limit) url += `&limit=${opts.limit}`;
+        const res = await fetch(url, { method: 'GET', headers: HEADERS });
+        const json = await res.json();
+        if (!res.ok) return { data: null, error: json };
+        return { data: json, error: null };
+      } catch (e) {
+        return { data: null, error: { message: e.message } };
+      }
+    }
+
+    // UPSERT (insert or update) — conflito por unique key
+    async function dbUpsert(table, body, onConflict) {
+      try {
+        const h = { ...HEADERS, 'Prefer': `resolution=merge-duplicates,return=representation` };
+        const url = `${SUPABASE_URL}/rest/v1/${table}?on_conflict=${onConflict}`;
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: h,
+          body: JSON.stringify(body)
+        });
+        const json = await res.json();
+        if (!res.ok) return { data: null, error: json };
+        return { data: json, error: null };
+      } catch (e) {
+        return { data: null, error: { message: e.message } };
+      }
+    }
+
+    async function dbPatch(table, filters = {}, body = {}) {
+      try {
+        let url = `${SUPABASE_URL}/rest/v1/${table}`;
+        const parts = [];
+        for (const [k, v] of Object.entries(filters)) {
+          parts.push(`${k}=eq.${encodeURIComponent(v)}`);
+        }
+        if (parts.length) url += `?${parts.join('&')}`;
+        const res = await fetch(url, {
+          method: 'PATCH',
+          headers: HEADERS,
+          body: JSON.stringify(body)
+        });
+        const json = await res.json();
+        if (!res.ok) return { data: null, error: json };
+        return { data: json, error: null };
+      } catch (e) {
+        return { data: null, error: { message: e.message } };
+      }
+    }
+
+    async function updateClientResponsavel(clientId, responsavel) {
+      return dbPatch('clientes', { id: clientId }, { funcionario: responsavel });
+    }
+
+    // ------------------------------------------
+    //  DATA
+    // ------------------------------------------
+    const servidorSteps = [
+      { num: 1, text: "Preparar acesso pelo AnyDesk", manual: "https://gr7autocom.notion.site/INSTALANDO-SERVIDOR-GR7-MYSQL-31f3b8c99a2946fb8db6777287e7ae6e#2699a16d674480bdb716d7a4ce8f6b5b" },
+      { num: 2, text: "Instalar o Master Remote no cliente", manual: "https://gr7autocom.notion.site/INSTALANDO-REMOTE-NO-CLIENTE-E-ADICIONANDO-AO-CONTROL-2659a16d674481069e5df972792afa0e" },
+      { num: 3, text: "Transferir arquivos GR7 pelo Master", manual: "https://gr7autocom.notion.site/INSTALANDO-SERVIDOR-GR7-MYSQL-31f3b8c99a2946fb8db6777287e7ae6e#2699a16d6744808b8c38d7791241ade3" },
+      { num: "Extra", text: "Otimização do Windows para Uso do Sistema GR7", manual: "https://gr7autocom.notion.site/CONFIGURANDO-WINDOWS-PARA-O-USUARIO-2689a16d674480c08d43c5867b2177dc", extra: true },
+      { num: 4, text: "Ajustes rápidos no Windows", manual: "https://gr7autocom.notion.site/INSTALANDO-SERVIDOR-GR7-MYSQL-31f3b8c99a2946fb8db6777287e7ae6e#2699a16d67448085bbfef928d9f39a9a" },
+      { num: 5, text: "Pastas na Área de Trabalho", manual: "https://gr7autocom.notion.site/INSTALANDO-SERVIDOR-GR7-MYSQL-31f3b8c99a2946fb8db6777287e7ae6e#2699a16d6744800790e2d496e564ada0" },
+      { num: 6, text: "(Se possível) Renomear o computador", manual: "https://gr7autocom.notion.site/INSTALANDO-SERVIDOR-GR7-MYSQL-31f3b8c99a2946fb8db6777287e7ae6e#2699a16d674480c393c1e8ad3b8580e6" },
+      { num: 7, text: "Compartilhamento de redes do Windows", manual: "https://gr7autocom.notion.site/INSTALANDO-SERVIDOR-GR7-MYSQL-31f3b8c99a2946fb8db6777287e7ae6e#2699a16d674480ee8ff6cf2becf374f8" },
+      { num: 8, text: "Fixar pastas no Acesso Rápido", manual: "https://gr7autocom.notion.site/INSTALANDO-SERVIDOR-GR7-MYSQL-31f3b8c99a2946fb8db6777287e7ae6e#2699a16d6744807bb47fdb698a6bb6b9" },
+      { num: 9, text: "(Se dedicado) Instalar WASSetup (Wise Auto Shutdown)", manual: "https://gr7autocom.notion.site/INSTALANDO-SERVIDOR-GR7-MYSQL-31f3b8c99a2946fb8db6777287e7ae6e#2699a16d6744805fb740f32f1f828e9d" },
+      { num: 10, text: "Instalar e definir Notepad++", manual: "https://gr7autocom.notion.site/INSTALANDO-SERVIDOR-GR7-MYSQL-31f3b8c99a2946fb8db6777287e7ae6e#2699a16d674480f1acaec0f3fddae730" },
+      { num: 11, text: "Instalar a fonte dos relatórios", manual: "https://gr7autocom.notion.site/INSTALANDO-SERVIDOR-GR7-MYSQL-31f3b8c99a2946fb8db6777287e7ae6e?pvs=97#2699a16d67448067b3eaef32c6975911" },
+      { num: 12, text: "Copiar o registro do cliente", manual: "https://gr7autocom.notion.site/INSTALANDO-SERVIDOR-GR7-MYSQL-31f3b8c99a2946fb8db6777287e7ae6e#2699a16d6744802b8643e06706c62a19" },
+      { num: "13a", text: "Instalar e configurar o MySQL 5.7", manual: "https://gr7autocom.notion.site/INSTALANDO-E-CONFIGURANDO-O-MYSQL-SERVER-5-7-38-a125c940921143429f7c5b25d5cfdab9" },
+      { num: "13b", text: "Configuração MySQL Server / My.ini", manual: "https://gr7autocom.notion.site/CONFIGURA-O-MYSQL-SERVER-MY-INI-2659a16d67448053b567d2673f45d5f8" },
+      { num: "13c", text: "Instalar e configurar o MySQL Administrator", manual: "https://gr7autocom.notion.site/INSTALANDO-E-CONFIGURANDO-O-MYSQL-ADMINISTRATOR-4de01b2e6580441098c482691842f347" },
+      { num: "13d", text: "Instalar e configurar o MySQL Manager 2007", manual: "https://gr7autocom.notion.site/INSTALANDO-E-CONFIGURANDO-O-MYSQL-MANAGER-2007-c4ee483a15774877875a370be49cb784" },
+      { num: 14, text: "Restaurar a base no Administrator", manual: "https://gr7autocom.notion.site/INSTALANDO-SERVIDOR-GR7-MYSQL-31f3b8c99a2946fb8db6777287e7ae6e#2699a16d67448080873ef00890f2343f" },
+      { num: "??", text: "Restaurar as bases em ordem", manual: "https://gr7autocom.notion.site/INSTALANDO-SERVIDOR-GR7-MYSQL-31f3b8c99a2946fb8db6777287e7ae6e?pvs=97#27d9a16d6744808894b2f569143defb3" },
+      { num: 15, text: "Compartilhar pastas do servidor", manual: "https://gr7autocom.notion.site/INSTALANDO-SERVIDOR-GR7-MYSQL-31f3b8c99a2946fb8db6777287e7ae6e#2699a16d674480bf9dd7dc3db6e2aa77" },
+      { num: 16, text: "Ajustar Demo.ini e config.ini", manual: "https://gr7autocom.notion.site/INSTALANDO-SERVIDOR-GR7-MYSQL-31f3b8c99a2946fb8db6777287e7ae6e#2699a16d67448086859fc99e61ee26e5" },
+      { num: 17, text: "Criar atalhos GR7 e organizar", manual: "https://gr7autocom.notion.site/INSTALANDO-SERVIDOR-GR7-MYSQL-31f3b8c99a2946fb8db6777287e7ae6e#2699a16d67448065bcefd02e8da923c0" },
+      { num: 18, text: "Configurar diretórios no Retaguarda", manual: "https://gr7autocom.notion.site/INSTALANDO-SERVIDOR-GR7-MYSQL-31f3b8c99a2946fb8db6777287e7ae6e#2699a16d67448025841af612a7ce3124" },
+      { num: 19, text: "Rodar o ATUALIZA GR7", manual: "https://gr7autocom.notion.site/INSTALANDO-SERVIDOR-GR7-MYSQL-31f3b8c99a2946fb8db6777287e7ae6e#2699a16d674480648992c41cd28ced47" },
+      { num: 20, text: "Configurar o Verificador GR7 na inicialização", manual: "https://gr7autocom.notion.site/INSTALANDO-SERVIDOR-GR7-MYSQL-31f3b8c99a2946fb8db6777287e7ae6e#2699a16d6744809e911fcea916537e40" },
+      { num: 21, text: "Instalando WebCharts e ServerMobile como serviço", manual: "https://gr7autocom.notion.site/INSTALANDO-WEBCHARTS-E-SERVERMOBILE-COMO-SERVI-O-1389a16d674480f08f6bfcdea16bb71d" },
+      { num: 22, text: "Criando e Configurando Rotina de Backup MySQL", manual: "https://gr7autocom.notion.site/CRIANDO-E-CONFIGURANDO-ROTINA-DE-BACKUP-MYSQL-2699a16d674480b284b6f9c0c8b64a22" },
+      { num: 23, text: "Criar exceções no Windows Defender (Executar BAT no Tutorial abaixo)", manual: "https://gr7autocom.notion.site/CRIAR-EXCE-ES-NO-WINDOWS-DEFENDER-2809a16d674480c0a7fbf1353b1b6aa1" },
+    ];
+
+    const retaguardaSteps = [
+      { num: 1, text: "Preparar acesso pelo AnyDesk", manual: "https://gr7autocom.notion.site/INSTALANDO-RETAGUARDA-GR7-8ac205a8fab74a6682cccb3c1ea8de5b#26a9a16d674480178a79fdd8401b3027" },
+      { num: 2, text: "Instalar o Master Remote no cliente", manual: "https://gr7autocom.notion.site/INSTALANDO-REMOTE-NO-CLIENTE-E-ADICIONANDO-AO-CONTROL-2659a16d674481069e5df972792afa0e" },
+      { num: 3, text: "Transferir arquivos GR7 pelo Master", manual: "https://gr7autocom.notion.site/INSTALANDO-RETAGUARDA-GR7-8ac205a8fab74a6682cccb3c1ea8de5b#26a9a16d6744807fa3cffc97531bd8df" },
+      { num: "Extra", text: "Otimização do Windows para Uso do Sistema GR7", manual: "https://gr7autocom.notion.site/CONFIGURANDO-WINDOWS-PARA-O-USUARIO-2689a16d674480c08d43c5867b2177dc", extra: true },
+      { num: 4, text: "Ajustes rápidos no Windows", manual: "https://gr7autocom.notion.site/INSTALANDO-RETAGUARDA-GR7-8ac205a8fab74a6682cccb3c1ea8de5b#26a9a16d67448052adb4ebe04c134262" },
+      { num: 5, text: "Pastas na Área de Trabalho", manual: "https://gr7autocom.notion.site/INSTALANDO-RETAGUARDA-GR7-8ac205a8fab74a6682cccb3c1ea8de5b#26a9a16d6744800587a5c44f8db0f085" },
+      { num: 6, text: "(Se possível) Renomear o computador", manual: "https://gr7autocom.notion.site/INSTALANDO-RETAGUARDA-GR7-8ac205a8fab74a6682cccb3c1ea8de5b#26a9a16d674480d19123fe57b8703144" },
+      { num: 7, text: "Compartilhamento de redes do Windows", manual: "https://gr7autocom.notion.site/INSTALANDO-RETAGUARDA-GR7-8ac205a8fab74a6682cccb3c1ea8de5b#26a9a16d6744803ba6e8effb3970d0f2" },
+      { num: 8, text: "Fixar pastas no Acesso Rápido", manual: "https://gr7autocom.notion.site/INSTALANDO-RETAGUARDA-GR7-8ac205a8fab74a6682cccb3c1ea8de5b#26a9a16d674480eb901dcd4a3d32f02c" },
+      { num: 9, text: "Instalar a fonte dos relatórios", manual: "https://gr7autocom.notion.site/INSTALANDO-RETAGUARDA-GR7-8ac205a8fab74a6682cccb3c1ea8de5b#26a9a16d674480928a08e13c773bf520" },
+      { num: 10, text: "Atualizar Registro e colocar no Servidor", manual: "https://gr7autocom.notion.site/INSTALANDO-RETAGUARDA-GR7-8ac205a8fab74a6682cccb3c1ea8de5b#26a9a16d67448056a7e7c962d4946609" },
+      { num: 11, text: "Instalar MySQL Manager", manual: "https://www.notion.so/INSTALANDO-E-CONFIGURANDO-O-MYSQL-MANAGER-2007-c4ee483a15774877875a370be49cb784?pvs=21" },
+      { num: 12, text: "Ajustar Demo.ini e config.ini", manual: "https://gr7autocom.notion.site/INSTALANDO-RETAGUARDA-GR7-8ac205a8fab74a6682cccb3c1ea8de5b?pvs=97#26a9a16d6744801cb6fac09b5c6c72ae" },
+      { num: 13, text: "Criar atalhos GR7 e organizar", manual: "https://gr7autocom.notion.site/INSTALANDO-RETAGUARDA-GR7-8ac205a8fab74a6682cccb3c1ea8de5b#26a9a16d67448042b1e4c03012197f63" },
+      { num: 14, text: "Rodar o ATUALIZA GR7", manual: "https://gr7autocom.notion.site/INSTALANDO-RETAGUARDA-GR7-8ac205a8fab74a6682cccb3c1ea8de5b?pvs=97#26a9a16d6744803e90a3f3f2927e3180" },
+      { num: 15, text: "Configurar o ATUALIZA GR7 na inicialização", manual: "https://gr7autocom.notion.site/INSTALANDO-RETAGUARDA-GR7-8ac205a8fab74a6682cccb3c1ea8de5b#26a9a16d6744809eaa5bfc5498c29d64" },
+      { num: 16, text: "Permissão para acessar rede compartilhada / Credenciais do Windows", manual: "https://gr7autocom.notion.site/PERMISS-O-PARA-ACESSAR-REDE-COMPARTILHADA-CREDENCIAIS-DO-WINDOWS-27e9a16d67448008a4b1fbccf7423f17" },
+      { num: 17, text: "Configurando periféricos no Sistema GR7 (Caso tenha Impressora/Etiqueta)", manual: "https://gr7autocom.notion.site/CONFIGURANDO-PERIFERICOS-NO-SISTEMA-GR7-2699a16d6744806eb63cff2b84c2cd7e" },
+      { num: 18, text: "Criar exceções no Windows Defender", manual: "https://gr7autocom.notion.site/CRIAR-EXCE-ES-NO-WINDOWS-DEFENDER-2809a16d674480c0a7fbf1353b1b6aa1" },
+    ];
+
+    const nfceSteps = [
+      { num: 1, text: "Preparar acesso pelo AnyDesk", manual: "https://gr7autocom.notion.site/INSTALANDO-FRENTE-DE-CAIXA-GR7-6cae4ac927b345888ecb61eab9b16497#26a9a16d67448056bd9cccf8e9d2f691" },
+      { num: 2, text: "Instalar o Master Remote no cliente", manual: "https://gr7autocom.notion.site/INSTALANDO-REMOTE-NO-CLIENTE-E-ADICIONANDO-AO-CONTROL-2659a16d674481069e5df972792afa0e" },
+      { num: 3, text: "Transferir arquivos GR7 pelo Master", manual: "https://gr7autocom.notion.site/INSTALANDO-FRENTE-DE-CAIXA-GR7-6cae4ac927b345888ecb61eab9b16497#26a9a16d6744803dada5d076fb6ac295" },
+      { num: "Extra", text: "Otimização do Windows para Uso do Sistema GR7", manual: "https://gr7autocom.notion.site/CONFIGURANDO-WINDOWS-PARA-O-USUARIO-2689a16d674480c08d43c5867b2177dc", extra: true },
+      { num: 4, text: "Ajustes rápidos no Windows", manual: "https://gr7autocom.notion.site/INSTALANDO-FRENTE-DE-CAIXA-GR7-6cae4ac927b345888ecb61eab9b16497#26a9a16d67448017a540d6796c95f95e" },
+      { num: 5, text: "Pastas na Área de Trabalho", manual: "https://gr7autocom.notion.site/INSTALANDO-FRENTE-DE-CAIXA-GR7-6cae4ac927b345888ecb61eab9b16497#26a9a16d674480b493b6e55c05001f42" },
+      { num: 6, text: "(Se possível) Renomear o computador", manual: "https://gr7autocom.notion.site/INSTALANDO-FRENTE-DE-CAIXA-GR7-6cae4ac927b345888ecb61eab9b16497#26a9a16d67448031a488cf28707c1eda" },
+      { num: 7, text: "Compartilhamento de redes do Windows", manual: "https://gr7autocom.notion.site/INSTALANDO-FRENTE-DE-CAIXA-GR7-6cae4ac927b345888ecb61eab9b16497#26a9a16d67448033848adb5c79fedf05" },
+      { num: 8, text: "Fixar pastas no Acesso Rápido", manual: "https://gr7autocom.notion.site/INSTALANDO-FRENTE-DE-CAIXA-GR7-6cae4ac927b345888ecb61eab9b16497?pvs=97#26a9a16d674480b980a0df9fce9b96f6" },
+      { num: 9, text: "Atualizar Registro e colocar no Servidor", manual: "https://gr7autocom.notion.site/INSTALANDO-FRENTE-DE-CAIXA-GR7-6cae4ac927b345888ecb61eab9b16497?pvs=97#26a9a16d674480579240f028f87242ea" },
+      { num: "10a", text: "Instalar e configurar o MySQL 5.7", manual: "https://gr7autocom.notion.site/INSTALANDO-E-CONFIGURANDO-O-MYSQL-SERVER-5-7-38-a125c940921143429f7c5b25d5cfdab9" },
+      { num: "10b", text: "Configuração MySQL Server / My.ini", manual: "https://gr7autocom.notion.site/CONFIGURA-O-MYSQL-SERVER-MY-INI-2659a16d67448053b567d2673f45d5f8" },
+      { num: "10c", text: "Instalar e configurar o MySQL Administrator", manual: "https://gr7autocom.notion.site/INSTALANDO-E-CONFIGURANDO-O-MYSQL-ADMINISTRATOR-4de01b2e6580441098c482691842f347" },
+      { num: "10d", text: "Instalar e configurar o MySQL Manager 2007", manual: "https://gr7autocom.notion.site/INSTALANDO-E-CONFIGURANDO-O-MYSQL-MANAGER-2007-c4ee483a15774877875a370be49cb784" },
+      { num: 11, text: "Restaurar a base no Administrator", manual: "https://gr7autocom.notion.site/INSTALANDO-FRENTE-DE-CAIXA-GR7-6cae4ac927b345888ecb61eab9b16497#26a9a16d67448030bcfdc5c1c8367c99" },
+      { num: 12, text: "Ajustar Demo.ini e config.ini", manual: "https://gr7autocom.notion.site/INSTALANDO-FRENTE-DE-CAIXA-GR7-6cae4ac927b345888ecb61eab9b16497#26a9a16d674480dd8e62e28be4d9bb54" },
+      { num: 13, text: "Criar atalhos GR7 e organizar", manual: "https://gr7autocom.notion.site/INSTALANDO-FRENTE-DE-CAIXA-GR7-6cae4ac927b345888ecb61eab9b16497#26a9a16d674480f09e2dea6378df59a2" },
+      { num: "14a", text: "Rodar o ATUALIZA GR7", manual: "https://gr7autocom.notion.site/INSTALANDO-FRENTE-DE-CAIXA-GR7-6cae4ac927b345888ecb61eab9b16497?pvs=97#26b9a16d674480d38a7ae23f70954fc9" },
+      { num: "14b", text: "Permissão para acessar rede compartilhada / Credenciais do Windows", manual: "https://gr7autocom.notion.site/PERMISS-O-PARA-ACESSAR-REDE-COMPARTILHADA-CREDENCIAIS-DO-WINDOWS-27e9a16d67448008a4b1fbccf7423f17" },
+      { num: 15, text: "Configurar o ATUALIZA GR7 na inicialização", manual: "https://gr7autocom.notion.site/INSTALANDO-FRENTE-DE-CAIXA-GR7-6cae4ac927b345888ecb61eab9b16497#2b59a16d6744805db5dbe4bcf72e6e2b" },
+      { num: 16, text: "Configurando periféricos no Sistema GR7 (Caso tenha Impressora/Balança)", manual: "https://gr7autocom.notion.site/CONFIGURANDO-PERIFERICOS-NO-SISTEMA-GR7-2699a16d6744806eb63cff2b84c2cd7e" },
+      { num: 17, text: "Instalando fonte para relatório (Caso vá usar Retaguarda)", manual: "https://gr7autocom.notion.site/INSTALANDO-FONTE-PARA-RELAT-RIO-27e9a16d6744800aad99f4fffd8385b1" },
+      { num: 18, text: "Criar exceções no Windows Defender", manual: "https://gr7autocom.notion.site/CRIAR-EXCE-ES-NO-WINDOWS-DEFENDER-2809a16d674480c0a7fbf1353b1b6aa1" },
+    ];
+
+    // ------------------------------------------
+    //  STATE
+    // ------------------------------------------
+    let clientData = {};
+    let selectedType = 'Servidor';
+    let currentTab = 'servidor';
+    let currentClientId = null;    // UUID do cliente no Supabase
+    let allClients = [];        // cache da lista de clientes
+    let saveDebounce = null;
+    let currentUserName = localStorage.getItem('gr7_current_user') || '';
+    let pendingResumeResponsible = '';
+
+    function updateCurrentUserUI() {
+      const el = document.getElementById('currentUserName');
+      if (el) el.textContent = currentUserName || '—';
+    }
+
+    function setCurrentUserName(name) {
+      currentUserName = (name || '').trim();
+      localStorage.setItem('gr7_current_user', currentUserName);
+      updateCurrentUserUI();
+    }
+
+    function requestResponsibleForRetomar() {
+      return new Promise(resolve => {
+        const overlay = document.getElementById('whoOverlay');
+        const input = document.getElementById('whoName');
+        const btnCancel = document.getElementById('whoCancel');
+        const btnContinue = document.getElementById('whoContinue');
+
+        input.value = currentUserName || '';
+        btnContinue.disabled = !input.value.trim();
+        overlay.classList.add('active');
+        overlay.setAttribute('aria-hidden', 'false');
+        setTimeout(() => input.focus(), 0);
+
+        const cleanup = () => {
+          overlay.classList.remove('active');
+          overlay.setAttribute('aria-hidden', 'true');
+          input.removeEventListener('input', onInput);
+          input.removeEventListener('keydown', onKeydown);
+          btnCancel.removeEventListener('click', onCancel);
+          btnContinue.removeEventListener('click', onContinue);
+        };
+
+        const onInput = () => {
+          btnContinue.disabled = !input.value.trim();
+        };
+
+        const onCancel = () => {
+          cleanup();
+          resolve(currentUserName || '');
+        };
+
+        const onContinue = () => {
+          const name = input.value.trim();
+          if (!name) return;
+          cleanup();
+          resolve(name);
+        };
+
+        const onKeydown = (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            btnContinue.click();
+          }
+          if (e.key === 'Escape') {
+            e.preventDefault();
+            btnCancel.click();
+          }
+        };
+
+        input.addEventListener('input', onInput);
+        input.addEventListener('keydown', onKeydown);
+        btnCancel.addEventListener('click', onCancel);
+        btnContinue.addEventListener('click', onContinue);
+      });
+    }
+
+    function localMetaKey() {
+      return 'gr7_progress_meta';
+    }
+
+    function getLocalMeta() {
+      try {
+        const j = localStorage.getItem(localMetaKey());
+        return j ? JSON.parse(j) : {};
+      } catch {
+        return {};
+      }
+    }
+
+    function saveLocalMeta(meta) {
+      localStorage.setItem(localMetaKey(), JSON.stringify(meta));
+    }
+
+    function setItemMeta(clientId, group, itemNum, data) {
+      const meta = getLocalMeta();
+      if (!meta[clientId]) meta[clientId] = {};
+      const key = `${group}:${itemNum}`;
+      if (data) meta[clientId][key] = data; else delete meta[clientId][key];
+      saveLocalMeta(meta);
+    }
+
+    function getItemMeta(clientId, group, itemNum) {
+      const meta = getLocalMeta();
+      const key = `${group}:${itemNum}`;
+      return (meta[clientId] && meta[clientId][key]) || null;
+    }
+
+    function updateItemBadge(el, name) {
+      const badge = el.querySelector('.item-resp-badge');
+      if (!badge) return;
+      if (name && name.trim()) {
+        badge.textContent = `👤 ${name.trim()}`;
+        badge.style.display = 'inline-flex';
+      } else {
+        badge.textContent = '';
+        badge.style.display = 'none';
+      }
+    }
+    // ------------------------------------------
+    //  TOAST
+    // ------------------------------------------
+    function showToast(msg, type = 'info', duration = 3000) {
+      const t = document.getElementById('toast');
+      t.className = 'toast ' + type;
+      t.innerHTML = (type === 'success' ? '✅ ' : type === 'error' ? '❌ ' : 'ℹ️ ') + msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), duration);
+    }
+
+    // ------------------------------------------
+    //  SAVE INDICATOR
+    // ------------------------------------------
+    function setSaveStatus(status) {
+      const el = document.getElementById('saveIndicator');
+      el.className = 'save-indicator ' + status;
+    }
+
+    // ------------------------------------------
+    //  MODAL TABS
+    // ------------------------------------------
+    async function showModalTab(tab) {
+      document.getElementById('tabNovoBtn').classList.toggle('active', tab === 'novo');
+      document.getElementById('tabRetomarBtn').classList.toggle('active', tab === 'retomar');
+      document.getElementById('sectionNovo').classList.toggle('active', tab === 'novo');
+      document.getElementById('sectionRetomar').classList.toggle('active', tab === 'retomar');
+      if (tab === 'retomar') {
+        const name = await requestResponsibleForRetomar();
+        if (name && name.trim()) {
+          pendingResumeResponsible = name.trim();
+          setCurrentUserName(pendingResumeResponsible);
+        } else {
+          pendingResumeResponsible = '';
+        }
+        loadClientsList();
+      }
+    }
+
+    function openModal() {
+      document.getElementById('modalOverlay').classList.add('active');
+      document.getElementById('btnCancelar').style.display = currentClientId ? 'block' : 'none';
+      document.getElementById('btnCriar').style.gridColumn = currentClientId ? '' : '1 / -1';
+      showModalTab('novo');
+    }
+
+    // ------------------------------------------
+    //  TIPO INSTALAÇÃO
+    // ------------------------------------------
+    function selectType(type) {
+      selectedType = type;
+      document.getElementById('btnServidor').classList.toggle('active', type === 'Servidor');
+      document.getElementById('btnRetaguarda').classList.toggle('active', type === 'Retaguarda');
+      document.getElementById('btnNFCe').classList.toggle('active', type === 'NFCe / Caixa');
+    }
+
+    function cancelModal() {
+      document.getElementById('modalOverlay').classList.remove('active');
+    }
+
+    // ------------------------------------------
+    //  CRIAR CLIENTE (salva no Supabase)
+    // ------------------------------------------
+    async function createClient() {
+      const btn = document.getElementById('btnCriar');
+      const name = document.getElementById('clientName').value.trim() || 'Cliente';
+      const date = document.getElementById('clientDate').value;
+      const pc = document.getElementById('clientPC').value.trim() || 'DESKTOP-XXXXXXX';
+      const emp = document.getElementById('clientEmployee').value.trim() || '—';
+
+      btn.disabled = true;
+      btn.innerHTML = '<div class="spinner"></div> Salvando...';
+
+      // Salvar no Supabase
+      const { data, error } = await dbInsert('clientes', {
+        nome: name, data: date || null, computador: pc, funcionario: emp, tipo: selectedType
+      });
+
+      if (error) {
+        showToast('Erro ao salvar cliente: ' + error.message, 'error');
+        btn.disabled = false;
+        btn.innerHTML = '? Criar e Iniciar Checklist';
+        return;
+      }
+
+      currentClientId = data.id;
+      clientData = { name, date, pc, emp, type: selectedType };
+      setCurrentUserName(emp);
+      applyClientUI();
+
+      document.getElementById('modalOverlay').classList.remove('active');
+      document.getElementById('app').classList.add('active');
+
+      buildLists();
+      switchToTypeTab(selectedType);
+      showToast('Cliente criado e sincronizado!', 'success');
+      setSaveStatus('saved');
+
+      btn.disabled = false;
+      btn.innerHTML = '? Criar e Iniciar Checklist';
+    }
+
+    function applyClientUI() {
+      document.getElementById('displayName').textContent = clientData.name;
+      document.getElementById('displayType').textContent = clientData.type;
+      document.getElementById('infoName').textContent = clientData.name;
+      document.getElementById('infoDate').textContent = clientData.date
+        ? new Date(clientData.date + 'T12:00:00').toLocaleDateString('pt-BR') : '—';
+      document.getElementById('infoPC').textContent = clientData.pc;
+      document.getElementById('infoEmployee').textContent = clientData.emp;
+    }
+
+    function switchToTypeTab(type) {
+      if (type === 'Retaguarda') switchTab('retaguarda');
+      else if (type === 'NFCe / Caixa') switchTab('nfce');
+      else switchTab('servidor');
+    }
+
+    // ------------------------------------------
+    //  LISTA DE CLIENTES EXISTENTES
+    // ------------------------------------------
+    async function loadClientsList() {
+      const container = document.getElementById('clientsList');
+      container.innerHTML = '<div class="clients-loading"><div class="spinner" style="margin:0 auto 10px"></div>Carregando...</div>';
+
+      const { data, error } = await dbSelect('clientes', {}, { order: 'criado_em.desc', limit: 50 });
+
+      if (error) {
+        container.innerHTML = '<div class="clients-empty">Erro ao carregar clientes.</div>';
+        return;
+      }
+
+      allClients = data || [];
+      renderClientsList(allClients);
+    }
+
+    function renderClientsList(list) {
+      const container = document.getElementById('clientsList');
+      if (!list.length) {
+        container.innerHTML = '<div class="clients-empty">Nenhum cliente encontrado.</div>';
+        return;
+      }
+
+      const typeIcons = { 'Servidor': '🖥️', 'Retaguarda': '🗄️', 'NFCe / Caixa': '🧾' };
+      container.innerHTML = '';
+      const ul = document.createElement('div');
+      ul.className = 'clients-list';
+
+      list.forEach(c => {
+        const row = document.createElement('div');
+        row.className = 'client-row';
+        const dateStr = c.data ? new Date(c.data + 'T12:00:00').toLocaleDateString('pt-BR') : '—';
+        row.innerHTML = `
+      <div class="client-row-info">
+        <div class="client-row-name">${c.nome}</div>
+        <div class="client-row-meta">
+          <span>📅 ${dateStr}</span>
+          <span>💻 ${c.computador || '—'}</span>
+          <span>👤 ${c.funcionario || '—'}</span>
+        </div>
+      </div>
+      <span class="client-row-badge">${typeIcons[c.tipo] || ''} ${c.tipo}</span>
+      <span class="client-row-arrow">›</span>
+    `;
+        row.onclick = () => resumeClient(c);
+        ul.appendChild(row);
+      });
+
+      container.appendChild(ul);
+    }
+
+    function filterClients(query) {
+      const q = query.toLowerCase();
+      const filtered = allClients.filter(c =>
+        c.nome.toLowerCase().includes(q) ||
+        (c.computador || '').toLowerCase().includes(q) ||
+        (c.funcionario || '').toLowerCase().includes(q)
+      );
+      renderClientsList(filtered);
+    }
+
+    // ------------------------------------------
+    //  RETOMAR CLIENTE EXISTENTE
+    // ------------------------------------------
+    async function resumeClient(c) {
+      document.getElementById('clientsList').innerHTML =
+        '<div class="clients-loading"><div class="spinner" style="margin:0 auto 10px"></div>Carregando progresso...</div>';
+
+      currentClientId = c.id;
+      const novoResponsavel = (pendingResumeResponsible || currentUserName || c.funcionario || '—').trim() || '—';
+      setCurrentUserName(novoResponsavel);
+      clientData = { name: c.nome, date: c.data, pc: c.computador, emp: novoResponsavel, type: c.tipo };
+      selectedType = c.tipo;
+      pendingResumeResponsible = '';
+
+      applyClientUI();
+      document.getElementById('modalOverlay').classList.remove('active');
+      document.getElementById('app').classList.add('active');
+      buildLists();
+
+      if (novoResponsavel && novoResponsavel !== (c.funcionario || '—')) {
+        const { error } = await updateClientResponsavel(currentClientId, novoResponsavel);
+        if (error) showToast('Não foi possível atualizar responsável do cliente: ' + (error.message || 'Erro'), 'error');
+      }
+
+      // Carregar progresso salvo
+      const { data: progresso, error } = await dbSelect(
+        'checklist_progresso',
+        { cliente_id: currentClientId, concluido: true }
+      );
+
+      if (error) {
+        showToast('Erro ao carregar progresso: ' + error.message, 'error');
+      } else if (progresso && progresso.length > 0) {
+        progresso.forEach(p => {
+          // Seletor compatível com ambos os grupos (servidor usa list-servidor-steps)
+          const selectors = [
+            `#list-${p.grupo}-steps .check-item[data-num="${p.item_num}"]`,
+            `#list-${p.grupo} .check-item[data-num="${p.item_num}"]`
+          ];
+          selectors.forEach(sel => {
+            const el = document.querySelector(sel);
+            if (el) {
+              el.classList.add('done');
+              const by = p.marcado_por || (currentClientId ? getItemMeta(currentClientId, p.grupo, p.item_num)?.by : null);
+              if (by) updateItemBadge(el, by);
+
+              // Restaurar observação salva
+              if (p.observacao) {
+                const obsInput = el.querySelector('.obs-input');
+                const obsBtn   = el.querySelector('.obs-toggle-btn');
+                if (obsInput) obsInput.value = p.observacao;
+                if (obsBtn)   { obsBtn.classList.add('has-obs'); obsBtn.title = p.observacao; }
+              }
+            }
+          });
+        });
+        updateProgress('servidor');
+        updateProgress('retaguarda');
+        updateProgress('nfce');
+        showToast(`Progresso restaurado (${progresso.length} item${progresso.length > 1 ? 's' : ''})`, 'success');
+      } else {
+        showToast('Cliente carregado — sem progresso anterior', 'info');
+      }
+
+      setSaveStatus('saved');
+      switchToTypeTab(c.tipo);
+    }
+
+    // ------------------------------------------
+    //  BUILD LISTS
+    // ------------------------------------------
+    function buildLists() {
+      const sList = document.getElementById('list-servidor-steps');
+      sList.innerHTML = '';
+      servidorSteps.forEach(s => sList.appendChild(makeItem(s.num, s.text, s.manual || null, s.extra || false, 'servidor')));
+
+      const rList = document.getElementById('list-retaguarda');
+      rList.innerHTML = '';
+      retaguardaSteps.forEach(s => rList.appendChild(makeItem(s.num, s.text, s.manual || null, s.extra || false, 'retaguarda')));
+
+      const nList = document.getElementById('list-nfce');
+      nList.innerHTML = '';
+      nfceSteps.forEach(s => nList.appendChild(makeItem(s.num, s.text, s.manual || null, s.extra || false, 'nfce')));
+
+      updateProgress('servidor');
+      updateProgress('retaguarda');
+      updateProgress('nfce');
+
+      // Reaplicar badges do armazenamento local (caso a API não traga o responsável)
+      if (currentClientId) {
+        ['servidor', 'retaguarda', 'nfce'].forEach(group => {
+          document
+            .querySelectorAll(`#list-${group}-steps .check-item, #list-${group} .check-item`)
+            .forEach(el => {
+              const itemNum = el.dataset.num;
+              const meta = getItemMeta(currentClientId, group, itemNum);
+              if (meta && el.classList.contains('done')) {
+                updateItemBadge(el, meta.by);
+              }
+            });
+        });
+      }
+    }
+
+    function makeItem(num, text, manual, isExtra, group) {
+      const div = document.createElement('div');
+      div.className = 'check-item' + (isExtra ? ' extra-step' : '');
+      div.dataset.group = group;
+      div.dataset.num = String(num);   // ? necessário para restaurar progresso
+      div.onclick = function (e) {
+        // não acionar toggle se clicou no obs-area ou botão
+        if (e.target.closest('.obs-area') || e.target.closest('.obs-toggle-btn')) return;
+        toggle(this);
+      };
+
+      div.innerHTML = `
+    <div class="check-box">✓</div>
+    <span class="item-number">${num}</span>
+    <div class="item-content">
+      <div class="item-text">${text}</div>
+    </div>
+    <div class="item-meta">
+      <span class="item-resp-badge" title="Marcado por"></span>
+      ${manual ? `<a class="item-manual" href="${manual}" target="_blank" onclick="event.stopPropagation()">📖 Manual</a>` : ''}
+      <button class="obs-toggle-btn" onclick="event.stopPropagation(); toggleObs(this)" title="Adicionar observação">💬 Obs</button>
+    </div>
+    <div class="obs-area">
+      <span class="obs-label">⚠️ Motivo:</span>
+      <textarea class="obs-input" rows="2" placeholder="Explique o motivo de não realizar esta etapa…" onclick="event.stopPropagation()"></textarea>
+      <button class="obs-save-btn" onclick="event.stopPropagation(); saveObs(this)">Salvar</button>
+      <span class="obs-saved-tag">✓ Salvo</span>
+    </div>
+  `;
+      return div;
+    }
+
+    function toggleObs(btn) {
+      const item = btn.closest('.check-item');
+      const area = item.querySelector('.obs-area');
+      area.classList.toggle('visible');
+      if (area.classList.contains('visible')) {
+        area.querySelector('.obs-input').focus();
+      }
+    }
+
+    async function saveObs(btn) {
+      const area   = btn.closest('.obs-area');
+      const item   = btn.closest('.check-item');
+      const input  = area.querySelector('.obs-input');
+      const tag    = area.querySelector('.obs-saved-tag');
+      const obsBtn = item.querySelector('.obs-toggle-btn');
+      const obs    = input.value.trim();
+      const group  = item.dataset.group || currentTab;
+      const itemNum= item.dataset.num;
+
+      if (!currentClientId) {
+        showToast('Abra um cliente antes de salvar a observação.', 'error');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = '…';
+
+      const { error } = await dbUpsert(
+        'checklist_progresso',
+        {
+          cliente_id:  currentClientId,
+          grupo:       group,
+          item_num:    itemNum,
+          concluido:   item.classList.contains('done'),
+          observacao:  obs,
+          marcado_por: currentUserName || '—',
+          marcado_em:  new Date().toISOString()
+        },
+        'cliente_id,grupo,item_num'
+      );
+
+      btn.disabled = false;
+      btn.textContent = 'Salvar';
+
+      if (error) {
+        showToast('Erro ao salvar obs: ' + error.message, 'error');
+      } else {
+        tag.classList.add('show');
+        setTimeout(() => tag.classList.remove('show'), 2500);
+        if (obs) {
+          obsBtn.classList.add('has-obs');
+          obsBtn.title = obs;
+        } else {
+          obsBtn.classList.remove('has-obs');
+          obsBtn.title = 'Adicionar observação';
+        }
+        showToast('Observação salva!', 'success');
+      }
+    }
+
+    // ------------------------------------------
+    //  TOGGLE + SALVAR NO SUPABASE
+    // ------------------------------------------
+    async function toggle(el) {
+      el.classList.toggle('done');
+      const group = el.dataset.group || currentTab;
+      const itemNum = el.dataset.num;
+      const concluido = el.classList.contains('done');
+      const marcadoPor = currentUserName || clientData.emp || '—';
+      const marcadoEm = new Date().toISOString();
+
+      updateProgress(group);
+
+      if (!currentClientId) return;
+
+      setSaveStatus('saving');
+
+      // Atualiza badge e armazenamento local
+      if (concluido) {
+        updateItemBadge(el, marcadoPor);
+        setItemMeta(currentClientId, group, itemNum, { by: marcadoPor, at: marcadoEm });
+      } else {
+        updateItemBadge(el, '');
+        setItemMeta(currentClientId, group, itemNum, null);
+      }
+
+      // Tentativa 1: salvar com campos de autoria (se existir na tabela)
+      let { error } = await dbUpsert(
+        'checklist_progresso',
+        { cliente_id: currentClientId, grupo: group, item_num: itemNum, concluido, marcado_por: marcadoPor, marcado_em: marcadoEm },
+        'cliente_id,grupo,item_num'
+      );
+
+      // Fallback: caso a tabela não possua colunas de autoria
+      if (error) {
+        ({ error } = await dbUpsert(
+          'checklist_progresso',
+          { cliente_id: currentClientId, grupo: group, item_num: itemNum, concluido },
+          'cliente_id,grupo,item_num'
+        ));
+      }
+
+      if (error) {
+        setSaveStatus('error');
+        showToast('Erro ao salvar: ' + error.message, 'error');
+      } else {
+        setSaveStatus('saved');
+      }
+    }
+
+    // ------------------------------------------
+    //  PROGRESS
+    // ------------------------------------------
+    function updateProgress(group) {
+      const items = document.querySelectorAll(
+        `#list-${group}-steps .check-item, #list-${group} .check-item`
+      );
+      const total = items.length;
+      const done = [...items].filter(i => i.classList.contains('done')).length;
+      const pct = total ? Math.round((done / total) * 100) : 0;
+      document.getElementById(`prog-${group}`).style.width = pct + '%';
+      document.getElementById(`prog-${group}-text`).textContent = `${done}/${total} (${pct}%)`;
+    }
+
+    // ------------------------------------------
+    //  TABS
+    // ------------------------------------------
+    function switchTab(tab) {
+      currentTab = tab;
+      document.querySelectorAll('.tab').forEach((t, i) => {
+        t.classList.toggle('active', ['servidor', 'retaguarda', 'nfce'][i] === tab);
+      });
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.getElementById('panel-' + tab).classList.add('active');
+    }
+
+    // ------------------------------------------
+    //  INIT
+    // ------------------------------------------
+    document.getElementById('clientDate').valueAsDate = new Date();
+    updateCurrentUserUI();
+  </script>
+</body>
+
+</html>
