@@ -1,544 +1,1799 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>GR7 — Dashboard</title>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;600&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet"/>
-<style>
-:root{
-  --bg:#07080d;--s1:#0e1018;--s2:#161820;--s3:#1e2030;--bdr:#252738;
-  --text:#dde1f0;--muted:#5a5e78;--r:14px;
-  --green:#00e5a0;--green2:#059669;
-  --c0:#818cf8;--c1:#38bdf8;--c2:#34d399;--c3:#fbbf24;--c4:#f87171;--c5:#e879f9;
-}
-*{margin:0;padding:0;box-sizing:border-box}
-body{background:var(--bg);color:var(--text);font-family:'Outfit',sans-serif;min-height:100vh;overflow-x:hidden}
-body::after{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:0;opacity:.5}
-.blob{position:fixed;border-radius:50%;filter:blur(130px);pointer-events:none;z-index:0;opacity:.15}
-.blob1{width:700px;height:700px;top:-250px;left:-200px;background:var(--c0)}
-.blob2{width:600px;height:600px;bottom:-250px;right:-150px;background:var(--c5)}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Checklist GR7</title>
 
-/* SHELL */
-.shell{position:relative;z-index:10;max-width:1400px;margin:0 auto;padding:0 44px 80px}
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-/* HEADER */
-header{display:flex;align-items:center;justify-content:space-between;padding:32px 0 44px;flex-wrap:wrap;gap:16px}
-.logo{display:flex;align-items:center;gap:16px}
-.logo-mark{width:54px;height:54px;background:linear-gradient(135deg,var(--c0),var(--c5));border-radius:16px;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:17px;color:#fff;box-shadow:0 0 35px rgba(129,140,248,.4)}
-.logo-text h1{font-family:'Syne',sans-serif;font-size:25px;font-weight:800;letter-spacing:-.5px}
-.logo-text p{font-size:13px;color:var(--muted);margin-top:3px}
-.hd-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.chip{font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--s1);border:1px solid var(--bdr);padding:6px 14px;border-radius:99px;color:var(--muted);user-select:none}
-.chip.live{border-color:rgba(0,229,160,.3);background:rgba(0,229,160,.07);color:var(--green);display:flex;align-items:center;gap:7px}
-.chip.live::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--green);animation:blink 2s ease-in-out infinite}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
-.chip.btn{cursor:pointer;transition:border-color .15s,color .15s}.chip.btn:hover{border-color:var(--c0);color:var(--c0)}
+    body {
+      background: #1a1a1a;
+      color: #e0e0e0;
+      font-family: 'Segoe UI', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji', 'Apple Color Emoji', sans-serif;
+      min-height: 100vh;
+    }
 
-/* SECTION TITLE */
-.sec{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted);margin-bottom:18px}
+    /* ----- TOAST ----- */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #2a2a2a;
+      border: 1px solid #333;
+      border-radius: 10px;
+      padding: 12px 18px;
+      font-size: 13px;
+      color: #ccc;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 9999;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: all 0.3s;
+      max-width: 320px;
+    }
 
-/* SUMMARY CARDS */
-.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:48px}
-.sc{background:var(--s1);border:1px solid var(--bdr);border-radius:var(--r);padding:24px;position:relative;overflow:hidden;transition:transform .2s,border-color .2s}
-.sc:hover{transform:translateY(-3px);border-color:rgba(129,140,248,.3)}
-.sc::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
-.sc.tot::before{background:linear-gradient(90deg,var(--c0),var(--c5))}
-.sc.done::before{background:linear-gradient(90deg,var(--green),var(--green2))}
-.sc.half::before{background:linear-gradient(90deg,var(--c3),#f97316)}
-.sc.pend::before{background:linear-gradient(90deg,var(--c4),#dc2626)}
-.sc-num{font-family:'IBM Plex Mono',monospace;font-size:44px;font-weight:600;line-height:1;margin-bottom:6px}
-.sc.tot .sc-num{color:var(--c0)}.sc.done .sc-num{color:var(--green)}.sc.half .sc-num{color:var(--c3)}.sc.pend .sc-num{color:var(--c4)}
-.sc-lbl{font-size:13px;color:var(--muted)}.sc-ico{position:absolute;right:20px;top:18px;font-size:30px;opacity:.2}
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
 
-/* CLIENTES RECENTES */
-.clientes-box{background:var(--s1);border:1px solid var(--bdr);border-radius:var(--r);margin-bottom:48px;overflow:hidden}
-.box-head{padding:18px 24px;border-bottom:1px solid var(--bdr);font-family:'Syne',sans-serif;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:space-between;gap:12px}
-.box-head span{color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:400}
-.cl-row{display:grid;grid-template-columns:1fr 120px 130px 110px 90px;align-items:center;gap:12px;padding:13px 24px;border-bottom:1px solid var(--bdr);transition:background .15s;font-size:13px}
-.cl-row:last-child{border-bottom:none}.cl-row:hover{background:rgba(255,255,255,.02)}
-.cl-head{background:var(--s2);font-size:10px;font-family:'IBM Plex Mono',monospace;letter-spacing:1px;color:var(--muted);text-transform:uppercase}
-.cl-head:hover{background:var(--s2)}
-.cl-name{font-weight:600;color:var(--text)}
-.cl-badge{display:inline-block;font-size:10px;font-weight:600;padding:3px 9px;border-radius:99px;white-space:nowrap}
-.cl-badge.servidor{background:rgba(129,140,248,.15);color:var(--c0)}
-.cl-badge.retaguarda{background:rgba(56,189,248,.12);color:var(--c1)}
-.cl-badge.nfce{background:rgba(0,229,160,.1);color:var(--green)}
-.cl-prog{display:flex;align-items:center;gap:8px}
-.mini-track{flex:1;height:5px;background:var(--s3);border-radius:99px;overflow:hidden}
-.mini-fill{height:100%;border-radius:99px}
-.mini-pct{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);width:32px;text-align:right;flex-shrink:0}
-.cl-func{color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.cl-date{color:var(--muted);font-size:11px;font-family:'IBM Plex Mono',monospace}
+    .toast.success {
+      border-color: rgba(0, 229, 160, 0.4);
+    }
 
-/* RANKING */
-.ranking{background:var(--s1);border:1px solid var(--bdr);border-radius:var(--r);margin-bottom:48px;overflow:hidden}
-.rk-row{display:grid;grid-template-columns:46px 44px 1fr 220px 64px 90px;align-items:center;gap:12px;padding:14px 24px;border-bottom:1px solid var(--bdr);transition:background .15s}
-.rk-row:last-child{border-bottom:none}.rk-row:hover{background:rgba(255,255,255,.025)}
-.rk-pos{font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:600;text-align:center}
-.rk-av{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;font-family:'Syne',sans-serif}
-.rk-name{font-size:15px;font-weight:600;text-transform:capitalize}
-.rk-bar-wrap{height:7px;background:var(--s3);border-radius:99px;overflow:hidden}
-.rk-bar{height:100%;border-radius:99px;transition:width 1.3s cubic-bezier(.4,0,.2,1)}
-.rk-pct{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;text-align:right}
-.rk-tasks{font-size:12px;color:var(--muted);text-align:right}
+    .toast.error {
+      border-color: rgba(255, 80, 80, 0.4);
+      color: #ff8080;
+    }
 
-/* USER CARDS */
-.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
-.ucard{background:var(--s1);border:1px solid var(--bdr);border-radius:var(--r);overflow:hidden;transition:transform .25s,box-shadow .25s,border-color .25s;animation:fadeUp .5s both}
-.ucard:hover{transform:translateY(-5px);box-shadow:0 28px 60px rgba(0,0,0,.55)}
-@keyframes fadeUp{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
-.ucard:nth-child(1){animation-delay:.05s}.ucard:nth-child(2){animation-delay:.10s}.ucard:nth-child(3){animation-delay:.15s}
-.ucard:nth-child(4){animation-delay:.20s}.ucard:nth-child(5){animation-delay:.25s}.ucard:nth-child(6){animation-delay:.30s}
-.ucard-top{padding:20px 20px 16px;display:flex;align-items:center;gap:14px;border-bottom:1px solid var(--bdr)}
-.av{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:17px;font-weight:800;flex-shrink:0}
-.uinfo{flex:1;min-width:0}
-.uname{font-family:'Syne',sans-serif;font-size:17px;font-weight:700;text-transform:capitalize}
-.ubadge{display:inline-block;margin-top:4px;font-size:10px;font-weight:600;letter-spacing:.5px;padding:2px 9px;border-radius:99px}
-.ubadge.great{background:rgba(0,229,160,.15);color:var(--green)}
-.ubadge.good{background:rgba(56,189,248,.12);color:var(--c1)}
-.ubadge.mid{background:rgba(251,191,36,.12);color:var(--c3)}
-.ubadge.low{background:rgba(248,113,113,.12);color:var(--c4)}
-.uscore{font-family:'IBM Plex Mono',monospace;font-size:28px;font-weight:600;text-align:right}
-.uscore small{display:block;font-size:10px;color:var(--muted);font-family:'Outfit',sans-serif;font-weight:400;letter-spacing:.5px}
+    /* ----- MODAL OVERLAY ----- */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
 
-/* PROGRESS */
-.uprog{padding:16px 20px 12px}
-.uprog-meta{display:flex;justify-content:space-between;margin-bottom:7px}
-.uprog-lbl{font-size:12px;color:var(--muted)}.uprog-n{font-family:'IBM Plex Mono',monospace;font-size:12px}
-.ptrack{height:7px;background:var(--s3);border-radius:99px;overflow:hidden}
-.pfill{height:100%;border-radius:99px;position:relative;transition:width 1.2s cubic-bezier(.4,0,.2,1)}
-.pfill::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.2),transparent);animation:shim 2.5s ease-in-out infinite}
-@keyframes shim{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+    .modal-overlay.active {
+      display: flex;
+    }
 
-/* STATS */
-.ustats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:0 20px 16px}
-.ustat{background:var(--s2);border-radius:10px;padding:12px;text-align:center}
-.ustat-n{font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:600;line-height:1}
-.ustat-l{font-size:10px;color:var(--muted);margin-top:3px;letter-spacing:.3px}
+    .modal {
+      background: #2a2a2a;
+      border-radius: 12px;
+      padding: 32px;
+      width: 560px;
+      max-width: 95vw;
+      max-height: 90vh;
+      overflow-y: auto;
+      position: relative;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
 
-/* GROUP BARS */
-.ugroups{padding:0 20px 18px;display:flex;flex-direction:column;gap:8px}
-.ugroup-row{display:flex;align-items:center;gap:10px}
-.ugroup-lbl{font-size:11px;color:var(--muted);width:80px;flex-shrink:0}
-.ugroup-track{flex:1;height:6px;background:var(--s3);border-radius:99px;overflow:hidden}
-.ugroup-fill{height:100%;border-radius:99px;transition:width 1.2s cubic-bezier(.4,0,.2,1)}
-.ugroup-pct{font-family:'IBM Plex Mono',monospace;font-size:11px;width:32px;text-align:right;flex-shrink:0}
+    .who-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      border-radius: 12px;
+      z-index: 10;
+      padding: 18px;
+    }
 
-/* CLIENTES LIST TOGGLE */
-.ucli{border-top:1px solid var(--bdr)}
-.ucli-btn{width:100%;padding:11px 20px;background:none;border:none;color:var(--muted);font-family:'Outfit',sans-serif;font-size:12px;cursor:pointer;text-align:left;display:flex;align-items:center;justify-content:space-between;transition:color .15s}
-.ucli-btn:hover{color:var(--text)}
-.ucli-list{display:none;padding:0 20px 14px}
-.ucli-list.open{display:block}
-/* ── BOTÃO ABRIR CHECKLIST ── */
-.open-checklist-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:calc(100% - 40px);margin:0 20px 18px;padding:11px 16px;border-radius:10px;border:1.5px solid;font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;text-decoration:none}
-.open-checklist-btn:hover{filter:brightness(1.15);transform:translateY(-1px)}
-.ucli-item{font-size:12px;padding:7px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between;gap:8px}
-.ucli-item:last-child{border:none}
-.ucli-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
-.ucli-pct{font-family:'IBM Plex Mono',monospace;font-size:11px;flex-shrink:0}
+    .who-overlay.active {
+      display: flex;
+    }
 
-/* LOADER */
-.loader{text-align:center;padding:60px 20px;color:var(--muted);font-size:14px}
-.spin{width:36px;height:36px;border:3px solid var(--bdr);border-top-color:var(--c0);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 16px}
-@keyframes spin{to{transform:rotate(360deg)}}
-.err{color:var(--c4)!important}
+    .who-card {
+      width: 100%;
+      max-width: 420px;
+      background: #2a2a2a;
+      border: 1.5px solid #3a3a3a;
+      border-radius: 12px;
+      padding: 22px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
 
-/* RESPONSIVE */
-@media(max-width:1100px){.cards{grid-template-columns:repeat(2,1fr)}.summary{grid-template-columns:repeat(2,1fr)}.rk-row{grid-template-columns:40px 40px 1fr 150px 55px 70px}.cl-row{grid-template-columns:1fr 110px 120px 80px}}
-@media(max-width:700px){.shell{padding:0 16px 60px}.cards{grid-template-columns:1fr}.rk-row{grid-template-columns:36px 36px 1fr 100px 50px}.rk-tasks{display:none}.cl-row{grid-template-columns:1fr 90px 100px}.cl-date{display:none}}
+    .modal-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      position: relative;
+    }
 
-/* ── PAINEL USUÁRIOS ── */
-.users-panel{background:var(--s1);border:1px solid var(--bdr);border-radius:var(--r);margin-bottom:48px;overflow:hidden}
-.users-grid-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;padding:20px 24px}
-.user-pill{display:flex;align-items:center;gap:12px;background:var(--s2);border:1px solid var(--bdr);border-radius:12px;padding:12px 14px;transition:border-color .2s}
-.user-pill:hover{border-color:rgba(129,140,248,.3)}
-.user-pill-av{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:14px;font-weight:800;flex-shrink:0}
-.user-pill-info{flex:1;min-width:0}
-.user-pill-name{font-size:14px;font-weight:600;text-transform:capitalize;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.user-pill-cargo{font-size:11px;color:var(--muted);margin-top:2px}
-.user-pill-actions{display:flex;gap:6px;flex-shrink:0}
-.pill-btn{width:26px;height:26px;border-radius:7px;border:1px solid var(--bdr);background:transparent;color:var(--muted);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
-.pill-btn:hover{border-color:var(--c0);color:var(--c0)}
-.pill-btn.del:hover{border-color:var(--c4);color:var(--c4)}
-.add-user-btn{display:flex;align-items:center;justify-content:center;gap:8px;background:var(--s2);border:1px dashed rgba(129,140,248,.35);border-radius:12px;padding:14px;color:var(--c0);font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;grid-column:span 1}
-.add-user-btn:hover{background:rgba(129,140,248,.08);border-color:rgba(129,140,248,.6)}
-/* ── MODAL ── */
-.umodal-bg{position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;align-items:center;justify-content:center;z-index:300;backdrop-filter:blur(4px)}
-.umodal-bg.open{display:flex}
-.umodal{background:var(--s1);border:1px solid var(--bdr);border-radius:20px;padding:32px;width:100%;max-width:460px;margin:20px}
-.umodal h2{font-family:'Syne',sans-serif;font-size:19px;font-weight:700;margin-bottom:22px}
-.ufield{margin-bottom:16px}
-.ufield label{display:block;font-size:11px;color:var(--muted);margin-bottom:6px;letter-spacing:.5px;text-transform:uppercase}
-.ufield input{width:100%;background:var(--s2);border:1px solid var(--bdr);border-radius:9px;padding:10px 14px;color:var(--text);font-family:'Outfit',sans-serif;font-size:14px;outline:none;transition:border-color .2s}
-.ufield input:focus{border-color:var(--c0)}
-.color-grid{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
-.color-opt{width:30px;height:30px;border-radius:8px;cursor:pointer;border:2px solid transparent;transition:all .15s}
-.color-opt.sel{border-color:#fff;transform:scale(1.15)}
-.umodal-btns{display:flex;gap:10px;margin-top:22px;justify-content:flex-end}
+    /* ----- MODAL TABS ----- */
+    .modal-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+      border: 1.5px solid #3a3a3a;
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
 
-</style>
+    .modal-tab-btn {
+      background: transparent;
+      border: none;
+      padding: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #666;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .modal-tab-btn.active {
+      background: rgba(0, 229, 160, 0.1);
+      color: #00e5a0;
+    }
+
+    .modal-tab-btn:first-child {
+      border-right: 1.5px solid #3a3a3a;
+    }
+
+    .modal-section {
+      display: none;
+    }
+
+    .modal-section.active {
+      display: block;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #888;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+      display: block;
+    }
+
+    .form-input {
+      width: 100%;
+      background: #1e1e1e;
+      border: 1.5px solid #3a3a3a;
+      border-radius: 8px;
+      padding: 12px 14px;
+      color: #fff;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .form-input:focus {
+      border-color: #00e5a0;
+    }
+
+    .form-input::placeholder {
+      color: #555;
+    }
+
+    select.form-input {
+      appearance: none;
+      -webkit-appearance: none;
+      cursor: pointer;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23888' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      padding-right: 36px;
+    }
+
+    select.form-input option {
+      background: #1e1e1e;
+      color: #fff;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .type-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+      margin-top: 4px;
+    }
+
+    .type-btn {
+      background: #1e1e1e;
+      border: 1.5px solid #3a3a3a;
+      border-radius: 8px;
+      padding: 12px;
+      color: #ccc;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .type-btn.active {
+      border-color: #00e5a0;
+      background: rgba(0, 229, 160, 0.08);
+      color: #00e5a0;
+    }
+
+    .modal-actions {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 10px;
+      margin-top: 24px;
+    }
+
+    .btn-cancel {
+      background: transparent;
+      border: 1.5px solid #3a3a3a;
+      border-radius: 8px;
+      padding: 12px;
+      color: #ccc;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-cancel:hover {
+      border-color: #666;
+      color: #fff;
+    }
+
+    .btn-create {
+      background: #00e5a0;
+      border: none;
+      border-radius: 8px;
+      padding: 12px;
+      color: #000;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-create:hover {
+      background: #00ffb3;
+    }
+
+    .btn-create:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* ----- LISTA CLIENTES RECENTES ----- */
+    .clients-loading {
+      text-align: center;
+      padding: 32px;
+      color: #555;
+      font-size: 14px;
+    }
+
+    .clients-empty {
+      text-align: center;
+      padding: 32px;
+      color: #555;
+      font-size: 14px;
+    }
+
+    .clients-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .client-row {
+      background: #1e1e1e;
+      border: 1.5px solid #333;
+      border-radius: 10px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .client-row:hover {
+      border-color: #00e5a0;
+      background: rgba(0, 229, 160, 0.04);
+    }
+
+    .client-row-info {
+      flex: 1;
+    }
+
+    .client-row-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+
+    .client-row-meta {
+      font-size: 11px;
+      color: #555;
+      display: flex;
+      gap: 12px;
+    }
+
+    .client-row-badge {
+      background: rgba(0, 229, 160, 0.12);
+      color: #00e5a0;
+      border: 1px solid rgba(0, 229, 160, 0.25);
+      border-radius: 20px;
+      padding: 3px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    .client-row-arrow {
+      color: #444;
+      font-size: 18px;
+    }
+
+    .search-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #1e1e1e;
+      border: 1.5px solid #3a3a3a;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 14px;
+    }
+
+    .search-box input {
+      background: transparent;
+      border: none;
+      outline: none;
+      color: #fff;
+      font-size: 14px;
+      flex: 1;
+    }
+
+    .search-box input::placeholder {
+      color: #555;
+    }
+
+    /* ----- MAIN APP ----- */
+    .app {
+      display: none;
+    }
+
+    .app.active {
+      display: block;
+    }
+
+    /* ----- TOP BAR ----- */
+    .topbar {
+      background: #222;
+      border-bottom: 1px solid #333;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      gap: 0;
+      height: 52px;
+    }
+
+    .client-info {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-right: auto;
+    }
+
+    .client-name {
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .client-badge {
+      background: rgba(0, 229, 160, 0.15);
+      color: #00e5a0;
+      border: 1px solid rgba(0, 229, 160, 0.3);
+      border-radius: 20px;
+      padding: 3px 10px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .topbar-btn {
+      background: transparent;
+      border: 1.5px solid #3a3a3a;
+      border-radius: 8px;
+      padding: 6px 14px;
+      color: #aaa;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-right: 16px;
+      white-space: nowrap;
+    }
+
+    .topbar-btn:hover {
+      border-color: #666;
+      color: #fff;
+    }
+
+    /* save indicator */
+    .save-indicator {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #444;
+      flex-shrink: 0;
+      margin-right: 8px;
+      transition: background 0.3s;
+    }
+
+    .save-indicator.saving {
+      background: #ffaa00;
+    }
+
+    .save-indicator.saved {
+      background: #00e5a0;
+    }
+
+    .save-indicator.error {
+      background: #ff5050;
+    }
+
+    /* ----- TABS ----- */
+    .tabs {
+      display: flex;
+      gap: 0;
+      height: 100%;
+      align-items: flex-end;
+    }
+
+    .current-user {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-right: 16px;
+      color: #aaa;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .tab {
+      padding: 0 20px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #666;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .tab:hover {
+      color: #aaa;
+    }
+
+    .tab.active {
+      color: #00e5a0;
+      border-bottom-color: #00e5a0;
+    }
+
+    /* ----- CONTENT ----- */
+    .content {
+      padding: 28px 28px;
+      max-width: 860px;
+    }
+
+    .tab-panel {
+      display: none;
+    }
+
+    .tab-panel.active {
+      display: block;
+    }
+
+    /* ----- SECTION TITLE ----- */
+    .section-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #333;
+      margin-left: 8px;
+    }
+
+    /* ----- CHECKLIST ITEMS ----- */
+    .checklist {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .check-item {
+      background: #252525;
+      border: 1px solid #333;
+      border-radius: 10px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+    }
+
+    .check-item:hover {
+      border-color: #444;
+      background: #2a2a2a;
+    }
+
+    .check-item.done {
+      opacity: 0.5;
+    }
+
+    .check-item.done .item-text {
+      text-decoration: line-through;
+      color: #666;
+    }
+
+    .check-box {
+      width: 22px;
+      height: 22px;
+      border: 2px solid #444;
+      border-radius: 6px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      font-size: 13px;
+      color: transparent;
+    }
+
+    .check-item.done .check-box {
+      background: #00e5a0;
+      border-color: #00e5a0;
+      color: #000;
+    }
+
+    .item-number {
+      font-size: 11px;
+      font-weight: 700;
+      color: #555;
+      min-width: 20px;
+    }
+
+    .check-item.done .item-number {
+      color: #444;
+    }
+
+    .item-content {
+      flex: 1;
+    }
+
+    .item-text {
+      font-size: 14px;
+      color: #ddd;
+      font-weight: 500;
+      margin-bottom: 2px;
+    }
+
+    .item-manual {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      color: #00e5a0;
+      text-decoration: none;
+      padding: 4px 10px;
+      border: 1px solid rgba(0, 229, 160, 0.25);
+      border-radius: 20px;
+      white-space: nowrap;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+
+    .item-manual:hover {
+      background: rgba(0, 229, 160, 0.1);
+      border-color: rgba(0, 229, 160, 0.5);
+    }
+
+    .item-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .item-resp-badge {
+      font-size: 11px;
+      color: #00e5a0;
+      background: rgba(0, 229, 160, 0.08);
+      border: 1px solid rgba(0, 229, 160, 0.25);
+      border-radius: 20px;
+      padding: 4px 10px;
+      display: none;
+    }
+
+    /* Extra step highlight */
+    .check-item.extra-step {
+      border-color: rgba(255, 170, 0, 0.3);
+      background: rgba(255, 170, 0, 0.05);
+    }
+
+    .check-item.extra-step .item-number {
+      color: #ffaa00;
+    }
+
+    /* ── OBSERVAÇÃO ── */
+    .check-item { flex-wrap: wrap; }
+
+    .obs-area {
+      display: none;
+      width: 100%;
+      padding-top: 10px;
+      margin-top: 8px;
+      border-top: 1px solid #2e2e2e;
+      gap: 8px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+    .obs-area.visible { display: flex; }
+
+    .obs-label {
+      font-size: 11px;
+      color: #ff8c42;
+      font-weight: 700;
+      white-space: nowrap;
+      margin-top: 8px;
+      letter-spacing: .04em;
+    }
+
+    .obs-input {
+      flex: 1;
+      min-width: 180px;
+      background: #1a1a1a;
+      border: 1.5px solid rgba(255,140,66,.35);
+      border-radius: 8px;
+      padding: 7px 11px;
+      color: #ddd;
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+      resize: none;
+      line-height: 1.4;
+      transition: border-color .2s;
+    }
+    .obs-input:focus { border-color: rgba(255,140,66,.75); }
+    .obs-input::placeholder { color: #555; }
+
+    .obs-save-btn {
+      background: rgba(255,140,66,.15);
+      border: 1.5px solid rgba(255,140,66,.4);
+      border-radius: 8px;
+      padding: 7px 14px;
+      color: #ff8c42;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all .2s;
+      white-space: nowrap;
+      align-self: flex-end;
+    }
+    .obs-save-btn:hover { background: rgba(255,140,66,.28); }
+    .obs-save-btn:disabled { opacity: .5; cursor: default; }
+
+    .obs-saved-tag {
+      font-size: 11px;
+      color: #00e5a0;
+      align-self: flex-end;
+      margin-bottom: 8px;
+      display: none;
+    }
+    .obs-saved-tag.show { display: block; }
+
+    .obs-toggle-btn {
+      background: transparent;
+      border: 1px solid #3a3a3a;
+      border-radius: 6px;
+      padding: 4px 9px;
+      color: #666;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all .2s;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .obs-toggle-btn:hover { border-color: #ff8c42; color: #ff8c42; }
+    .obs-toggle-btn.has-obs {
+      border-color: rgba(255,140,66,.5);
+      color: #ff8c42;
+      background: rgba(255,140,66,.08);
+    }
+
+    /* ----- PROGRESS BAR ----- */
+    .progress-bar-wrap {
+      background: #2a2a2a;
+      border: 1px solid #333;
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .progress-track {
+      flex: 1;
+      height: 6px;
+      background: #1a1a1a;
+      border-radius: 99px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #00e5a0, #00b37a);
+      border-radius: 99px;
+      transition: width 0.4s ease;
+    }
+
+    .progress-text {
+      font-size: 13px;
+      font-weight: 700;
+      color: #00e5a0;
+      white-space: nowrap;
+    }
+
+    .progress-label {
+      font-size: 12px;
+      color: #666;
+    }
+
+    /* ----- INFO PANEL ----- */
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .info-card {
+      background: #252525;
+      border: 1px solid #333;
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+
+    .info-card-label {
+      font-size: 10px;
+      font-weight: 700;
+      color: #555;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 6px;
+    }
+
+    .info-card-value {
+      font-size: 14px;
+      font-weight: 600;
+      color: #ddd;
+    }
+
+    /* spinner */
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid #333;
+      border-top-color: #00e5a0;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      flex-shrink: 0;
+    }
+  </style>
 </head>
+
 <body>
-<div class="blob blob1"></div>
-<div class="blob blob2"></div>
-<div class="shell">
 
-<header>
-  <div class="logo">
-    <div class="logo-mark">GR7</div>
-    <div class="logo-text">
-      <h1>Dashboard de Desempenho</h1>
-      <p>INSTALACOES CLIENTES — Dados em tempo real</p>
+  <!-- --------------------------- TOAST --------------------------- -->
+  <div class="toast" id="toast"></div>
+
+  <!-- --------------------------- MODAL NOVO CLIENTE --------------------------- -->
+  <div class="modal-overlay active" id="modalOverlay">
+    <div class="modal">
+      <div class="modal-title">
+        <span>📝 Checklist GR7</span>
+        <button onclick="voltarDashboard()" title="Voltar ao Dashboard" style="margin-left:auto;background:transparent;border:1px solid #444;border-radius:8px;color:#888;font-size:16px;width:32px;height:32px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0" onmouseover="this.style.borderColor='#f87171';this.style.color='#f87171'" onmouseout="this.style.borderColor='#444';this.style.color='#888'">✕</button>
+      </div>
+
+      <!-- Tabs -->
+      <div class="modal-tabs">
+        <button class="modal-tab-btn active" id="tabNovoBtn" onclick="showModalTab('novo')">➕ Novo Cliente</button>
+        <button class="modal-tab-btn" id="tabRetomarBtn" onclick="showModalTab('retomar')">🔄 Retomar</button>
+      </div>
+
+      <div class="who-overlay" id="whoOverlay" aria-hidden="true">
+        <div class="who-card">
+          <div class="modal-title" style="margin-bottom: 16px">👤 Quem vai retomar?</div>
+          <div class="form-group">
+            <label class="form-label">Responsável</label>
+            <select class="form-input" id="whoName">
+              <option value="">⏳ Carregando...</option>
+            </select>
+          </div>
+          <div class="modal-actions" style="margin-top: 16px">
+            <button class="btn-cancel" id="whoCancel" type="button">Cancelar</button>
+            <button class="btn-create" id="whoContinue" type="button" disabled>Continuar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- -- Seção: Novo Cliente -- -->
+      <div class="modal-section active" id="sectionNovo">
+        <div class="form-group">
+          <label class="form-label">Nome do Cliente</label>
+          <input class="form-input" id="clientName" type="text" placeholder="Ex: WF Frutaria">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Data</label>
+            <input class="form-input" id="clientDate" type="date">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Nome do Computador</label>
+            <input class="form-input" id="clientPC" type="text" placeholder="DESKTOP-XXXXXXX">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">👤 Funcionário Responsável</label>
+          <select class="form-input" id="clientEmployee">
+            <option value="">⏳ Carregando colaboradores...</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Tipo de Instalação</label>
+          <div class="type-buttons">
+            <button class="type-btn active" id="btnServidor" onclick="selectType('Servidor')">🖥️ Servidor</button>
+            <button class="type-btn" id="btnRetaguarda" onclick="selectType('Retaguarda')">🗄️ Retaguarda</button>
+            <button class="type-btn" id="btnNFCe" onclick="selectType('NFCe / Caixa')">🧾 NFCe / Caixa</button>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn-cancel" id="btnCancelar" onclick="cancelModal()" style="display:none">Cancelar</button>
+          <button class="btn-create" id="btnCriar" onclick="createClient()" style="grid-column: 1 / -1">
+            🚀 Criar e Iniciar Checklist
+          </button>
+        </div>
+      </div>
+
+      <!-- -- Seção: Retomar -- -->
+      <div class="modal-section" id="sectionRetomar">
+        <div class="search-box">
+          <span>🔍</span>
+          <input type="text" id="searchClients" placeholder="Buscar cliente..." oninput="filterClients(this.value)">
+        </div>
+        <div id="clientsList" class="clients-loading">
+          <div class="spinner" style="margin: 0 auto 10px"></div>
+          Carregando clientes...
+        </div>
+      </div>
     </div>
   </div>
-  <div class="hd-right">
-    <div class="chip live">AO VIVO</div>
-    <div class="chip" id="dateChip"></div>
-    <div class="chip btn" onclick="openUModal()">&#128101; Usuários</div>
-    <div class="chip btn" onclick="window.location.href='relatorios-checklist.html'">📊 Relatórios</div>
-    <div class="chip btn" id="syncChip" onclick="loadAll()">&#8635; Atualizar</div>
-  </div>
-</header>
 
-<p class="sec">Colaboradores Cadastrados</p>
-<div class="users-panel">
-  <div class="box-head">&#128101; Equipe <span id="totalUsers" style="color:var(--muted);font-size:12px;margin-left:8px"></span></div>
-  <div class="users-grid-list" id="usersList"><div style="padding:16px;color:#555;font-size:13px">⏳ Conectando ao Supabase…</div></div>
-</div>
+  <!-- --------------------------- APP --------------------------- -->
+  <div class="app" id="app">
 
-<p class="sec">Visão Geral</p>
-<div class="summary">
-  <div class="sc tot"><div class="sc-ico">📋</div><div class="sc-num" id="sClientes">—</div><div class="sc-lbl">Total de Projetos</div></div>
-  <div class="sc done"><div class="sc-ico">✅</div><div class="sc-num" id="sDone">—</div><div class="sc-lbl">Projetos Concluídos</div></div>
-  <div class="sc half"><div class="sc-ico">⏳</div><div class="sc-num" id="sMedia">—</div><div class="sc-lbl">Em Andamento</div></div>
-  <div class="sc pend"><div class="sc-ico">🎯</div><div class="sc-num" id="sPend">—</div><div class="sc-lbl">% de Conclusão</div></div>
-</div>
-
-<p class="sec">Últimos Clientes</p>
-<div class="clientes-box">
-  <div class="box-head">📂 Clientes Recentes <span id="totalClientes"></span></div>
-  <div id="clientesBody"><div style="padding:16px;color:#555;font-size:13px">⏳ Conectando…</div></div>
-</div>
-
-<p class="sec">Ranking de Colaboradores</p>
-<div class="ranking">
-  <div class="box-head">🏆 Classificação por Tarefas Concluídas</div>
-  <div id="rankingBody"><div style="padding:16px;color:#555;font-size:13px">⏳ Conectando…</div></div>
-</div>
-
-<p class="sec">Desempenho Individual</p>
-<div class="cards" id="cardsGrid">
-  <div class="loader" style="grid-column:1/-1"><div class="spin"></div>Carregando...</div>
-</div>
-
-</div>
-
-<div class="umodal-bg" id="umodalBg">
-  <div class="umodal">
-    <h2 id="umodalTitle">Novo Colaborador</h2>
-    <div class="ufield"><label>Nome</label><input id="uNome" type="text" placeholder="Ex: João Silva"/></div>
-    <div class="ufield"><label>Cargo</label><input id="uCargo" type="text" placeholder="Ex: Técnico, Instalador"/></div>
-    <div class="ufield"><label>Cor</label><div class="color-grid" id="colorGrid"></div></div>
-    <div class="umodal-btns">
-      <button class="btn btn-cancel" onclick="closeUModal()">Cancelar</button>
-      <button class="btn btn-save" onclick="saveUser()">Salvar</button>
+    <!-- TOP BAR -->
+    <div class="topbar">
+      <div class="client-info">
+        <div class="save-indicator" id="saveIndicator" title="Status de sincronização"></div>
+        <span class="client-name" id="displayName">—</span>
+        <span class="client-badge" id="displayType">—</span>
+      </div>
+      <div class="current-user">
+        <span>👤 Responsável:</span>
+        <strong id="currentUserName">—</strong>
+      </div>
+      <button class="topbar-btn" onclick="voltarDashboard()" style="background:rgba(99,102,241,.15);border-color:rgba(99,102,241,.4);color:#818cf8">← Dashboard</button>
+      <button class="topbar-btn" onclick="openModal()">? Novo / Trocar</button>
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab('servidor')">🖥️ Servidor</div>
+        <div class="tab" onclick="switchTab('retaguarda')">🗄️ Retaguarda</div>
+        <div class="tab" onclick="switchTab('nfce')">🧾 NFCe / Caixa</div>
+      </div>
     </div>
-  </div>
-</div>
 
-<script>
+    <!-- --- CONTEÚDO --- -->
+    <div class="content">
 
-const SURL = 'https://nhzjkahbkeusgntheyug.supabase.co';
-const SKEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5oemprYWhia2V1c2dudGhleXVnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyNjYwMDQsImV4cCI6MjA4ODg0MjAwNH0.hB2bJBMoJoztuNrb4xCRIgWmwMlayBpVOMWq3mI4nH4';
-const SH = {'apikey':SKEY,'Authorization':'Bearer '+SKEY,'Content-Type':'application/json','Prefer':'return=representation'};
+      <!-- INFO CARDS -->
+      <div class="info-grid">
+        <div class="info-card">
+          <div class="info-card-label">Cliente</div>
+          <div class="info-card-value" id="infoName">—</div>
+        </div>
+        <div class="info-card">
+          <div class="info-card-label">Data</div>
+          <div class="info-card-value" id="infoDate">—</div>
+        </div>
+        <div class="info-card">
+          <div class="info-card-label">Computador</div>
+          <div class="info-card-value" id="infoPC">—</div>
+        </div>
+        <div class="info-card">
+          <div class="info-card-label">Responsável</div>
+          <div class="info-card-value" id="infoEmployee">—</div>
+        </div>
+      </div>
 
-const RANKS   = ['🥇','🥈','🥉','4°','5°','6°'];
-const PALETTE = ['#818cf8','#38bdf8','#34d399','#fbbf24','#f87171','#e879f9','#fb923c','#a78bfa','#f472b6','#4ade80'];
+      <!-- ---------- TAB: SERVIDOR ---------- -->
+      <div class="tab-panel active" id="panel-servidor">
+        <div class="progress-bar-wrap">
+          <span class="progress-label">Progresso</span>
+          <div class="progress-track">
+            <div class="progress-fill" id="prog-servidor" style="width:0%"></div>
+          </div>
+          <span class="progress-text" id="prog-servidor-text">0%</span>
+        </div>
+        <div class="section-title">🖥️ Instalação Servidor GR7</div>
+        <div class="checklist" id="list-servidor-steps"></div>
+      </div>
 
-let USERS = [];
-let editingUserId = null;
-let selectedColor = PALETTE[0];
+      <!-- ---------- TAB: RETAGUARDA ---------- -->
+      <div class="tab-panel" id="panel-retaguarda">
+        <div class="progress-bar-wrap">
+          <span class="progress-label">Progresso</span>
+          <div class="progress-track">
+            <div class="progress-fill" id="prog-retaguarda" style="width:0%"></div>
+          </div>
+          <span class="progress-text" id="prog-retaguarda-text">0%</span>
+        </div>
+        <div class="section-title">🗄️ Instalação Retaguarda GR7</div>
+        <div class="checklist" id="list-retaguarda"></div>
+      </div>
 
-function initials(n){var p=(n||'').trim().split(' ');return p.length>=2?(p[0][0]+p[1][0]).toUpperCase():(n||'??').slice(0,2).toUpperCase();}
-function norm(s){return(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();}
-function badge(pct){if(pct>=80)return{cls:'great',lbl:'🔥 Excelente'};if(pct>=60)return{cls:'good',lbl:'👍 Bom'};if(pct>=40)return{cls:'mid',lbl:'⚡ Regular'};return{cls:'low',lbl:'⚠️ Atenção'};}
-function matchUser(name){if(!name||!USERS.length)return null;var n=norm(name);return USERS.find(function(u){return n.includes(norm(u.label));});}
-function fmtDate(d){if(!d)return'—';return new Date(d).toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});}
+      <!-- ---------- TAB: NFCe ---------- -->
+      <div class="tab-panel" id="panel-nfce">
+        <div class="progress-bar-wrap">
+          <span class="progress-label">Progresso</span>
+          <div class="progress-track">
+            <div class="progress-fill" id="prog-nfce" style="width:0%"></div>
+          </div>
+          <span class="progress-text" id="prog-nfce-text">0%</span>
+        </div>
+        <div class="section-title">🧾 Instalação NFCe / Caixa GR7</div>
+        <div class="checklist" id="list-nfce"></div>
+      </div>
 
-async function dbGet(path){
-  var r=await fetch(SURL+'/rest/v1/'+path,{headers:SH});
-  if(!r.ok)throw new Error(await r.text());
-  return r.json();
-}
-async function dbPost(table,body){
-  var r=await fetch(SURL+'/rest/v1/'+table,{method:'POST',headers:SH,body:JSON.stringify(body)});
-  if(!r.ok)throw new Error(await r.text());
-  return r.status===204?null:r.json();
-}
-async function dbPatch(table,id,body){
-  var r=await fetch(SURL+'/rest/v1/'+table+'?id=eq.'+id,{method:'PATCH',headers:SH,body:JSON.stringify(body)});
-  if(!r.ok)throw new Error(await r.text());
-}
+    </div><!-- /content -->
+  </div><!-- /app -->
 
-async function loadUsers(){
-  try{
-    let data;
-    try{ data=await dbGet('colaboradores?order=id&ativo=eq.true'); }
-    catch(e){ data=await dbGet('colaboradores?order=id'); }
-    USERS=data.map(function(u){return{id:u.id,key:norm(u.nome),label:u.nome,cargo:u.cargo||'Colaborador',color:u.cor||'#818cf8'};});
-    renderUsersList();
-    document.getElementById('totalUsers').textContent=USERS.length+' membros';
-  }catch(e){
-    console.error('loadUsers:',e);
-    document.getElementById('usersList').innerHTML=
-      '<div style="padding:20px;color:#f87171;font-size:13px">❌ Erro ao carregar colaboradores:<br>'
-      +'<code style="font-size:11px;color:#fca5a5;word-break:break-all">'+e.message+'</code><br><br>'
-      +'<span style="color:#888;font-size:12px">Verifique se a tabela <b>colaboradores</b> existe no Supabase.</span></div>';
-  }
-}
+  <script>
+    // ------------------------------------------
+    //  SUPABASE REST API — sem SDK
+    // ------------------------------------------
+    const SUPABASE_URL = 'https://nhzjkahbkeusgntheyug.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5oemprYWhia2V1c2dudGhleXVnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyNjYwMDQsImV4cCI6MjA4ODg0MjAwNH0.hB2bJBMoJoztuNrb4xCRIgWmwMlayBpVOMWq3mI4nH4';
 
-function renderUsersList(){
-  var el=document.getElementById('usersList');
-  var html=USERS.map(function(u){
-    return '<div class="user-pill">'
-      +'<div class="user-pill-av" style="background:'+u.color+'22;color:'+u.color+'">'+initials(u.label)+'</div>'
-      +'<div class="user-pill-info"><div class="user-pill-name">'+u.label+'</div><div class="user-pill-cargo">'+u.cargo+'</div></div>'
-      +'<div class="user-pill-actions">'
-        +'<button class="pill-btn" onclick="openUModal('+u.id+')">✏️</button>'
-        +'<button class="pill-btn del" onclick="deleteUser('+u.id+',\''+u.label+'\')">✕</button>'
-      +'</div></div>';
-  }).join('');
-  el.innerHTML=html+'<div class="add-user-btn" onclick="openUModal()">＋ Adicionar colaborador</div>';
-}
+    const HEADERS = {
+      'Content-Type': 'application/json',
+      'apikey': SUPABASE_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_KEY,
+      'Prefer': 'return=representation'
+    };
 
-function buildColorGrid(sel){
-  document.getElementById('colorGrid').innerHTML=PALETTE.map(function(c){
-    return '<div class="color-opt'+(c===sel?' sel':'')+'" style="background:'+c+'" onclick="pickColor(\''+c+'\',this)"></div>';
-  }).join('');
-  selectedColor=sel||PALETTE[0];
-}
-function pickColor(c,el){
-  selectedColor=c;
-  document.querySelectorAll('.color-opt').forEach(function(e){e.classList.remove('sel');});
-  el.classList.add('sel');
-}
+    // INSERT numa tabela, retorna { data, error }
+    async function dbInsert(table, body) {
+      try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+          method: 'POST',
+          headers: HEADERS,
+          body: JSON.stringify(body)
+        });
+        const json = await res.json();
+        if (!res.ok) return { data: null, error: json };
+        const row = Array.isArray(json) ? json[0] : json;
+        return { data: row, error: null };
+      } catch (e) {
+        return { data: null, error: { message: e.message } };
+      }
+    }
 
-function openUModal(id){
-  editingUserId=id||null;
-  if(id){
-    var u=USERS.find(function(u){return u.id===id;});
-    if(!u)return;
-    document.getElementById('umodalTitle').textContent='✏️ Editar Colaborador';
-    document.getElementById('uNome').value=u.label;
-    document.getElementById('uCargo').value=u.cargo;
-    buildColorGrid(u.color);
-  }else{
-    document.getElementById('umodalTitle').textContent='➕ Novo Colaborador';
-    document.getElementById('uNome').value='';
-    document.getElementById('uCargo').value='';
-    buildColorGrid(PALETTE[USERS.length%PALETTE.length]);
-  }
-  document.getElementById('umodalBg').classList.add('open');
-}
-function closeUModal(){document.getElementById('umodalBg').classList.remove('open');}
-document.getElementById('umodalBg').addEventListener('click',function(e){if(e.target===e.currentTarget)closeUModal();});
+    // SELECT com filtros simples: filters = { coluna: valor, ... }
+    async function dbSelect(table, filters = {}, opts = {}) {
+      try {
+        let url = `${SUPABASE_URL}/rest/v1/${table}?select=*`;
+        for (const [k, v] of Object.entries(filters)) {
+          url += `&${k}=eq.${encodeURIComponent(v)}`;
+        }
+        if (opts.order) url += `&order=${opts.order}`;
+        if (opts.limit) url += `&limit=${opts.limit}`;
+        const res = await fetch(url, { method: 'GET', headers: HEADERS });
+        const json = await res.json();
+        if (!res.ok) return { data: null, error: json };
+        return { data: json, error: null };
+      } catch (e) {
+        return { data: null, error: { message: e.message } };
+      }
+    }
 
-async function saveUser(){
-  var nome=document.getElementById('uNome').value.trim();
-  var cargo=document.getElementById('uCargo').value.trim()||'Colaborador';
-  if(!nome){alert('Digite o nome!');return;}
-  try{
-    if(editingUserId){await dbPatch('colaboradores',editingUserId,{nome:nome,cargo:cargo,cor:selectedColor});}
-    else{await dbPost('colaboradores',{nome:nome,cargo:cargo,cor:selectedColor,ativo:true});}
-    closeUModal();
-    await loadUsers();
-    await loadDashboard();
-  }catch(e){alert('Erro ao salvar: '+e.message);}
-}
+    // UPSERT (insert or update) — conflito por unique key
+    async function dbUpsert(table, body, onConflict) {
+      try {
+        const h = { ...HEADERS, 'Prefer': `resolution=merge-duplicates,return=representation` };
+        const url = `${SUPABASE_URL}/rest/v1/${table}?on_conflict=${onConflict}`;
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: h,
+          body: JSON.stringify(body)
+        });
+        const json = await res.json();
+        if (!res.ok) return { data: null, error: json };
+        return { data: json, error: null };
+      } catch (e) {
+        return { data: null, error: { message: e.message } };
+      }
+    }
 
-async function deleteUser(id,nome){
-  if(!confirm('Remover "'+nome+'"?'))return;
-  try{
-    await dbPatch('colaboradores',id,{ativo:false});
-    await loadUsers();
-    await loadDashboard();
-  }catch(e){alert('Erro: '+e.message);}
-}
+    async function dbPatch(table, filters = {}, body = {}) {
+      try {
+        let url = `${SUPABASE_URL}/rest/v1/${table}`;
+        const parts = [];
+        for (const [k, v] of Object.entries(filters)) {
+          parts.push(`${k}=eq.${encodeURIComponent(v)}`);
+        }
+        if (parts.length) url += `?${parts.join('&')}`;
+        const res = await fetch(url, {
+          method: 'PATCH',
+          headers: HEADERS,
+          body: JSON.stringify(body)
+        });
+        const json = await res.json();
+        if (!res.ok) return { data: null, error: json };
+        return { data: json, error: null };
+      } catch (e) {
+        return { data: null, error: { message: e.message } };
+      }
+    }
 
-async function loadDashboard(){
-  document.getElementById('syncChip').textContent='↻ Sincronizando…';
+    async function updateClientResponsavel(clientId, responsavel) {
+      return dbPatch('clientes', { id: clientId }, { funcionario: responsavel });
+    }
 
-  // ── 1. Clientes (vw_progresso_clientes)
-  var clientes=[];
-  try{
-    clientes=await dbGet('vw_progresso_clientes?limit=200');
-    renderClientes(clientes.slice(0,15));
-  }catch(e){
-    console.error('vw_progresso_clientes:',e);
-    document.getElementById('clientesBody').innerHTML=
-      '<tr><td colspan="6" style="padding:20px;color:#f87171;font-size:13px">❌ Erro ao carregar clientes:<br><code style="font-size:11px">'+e.message+'</code></td></tr>';
-  }
+    // ------------------------------------------
+    //  DATA
+    // ------------------------------------------
+    const servidorSteps = [
+      { num: 1, text: "Preparar acesso pelo AnyDesk", manual: "https://gr7autocom.notion.site/INSTALANDO-SERVIDOR-GR7-MYSQL-31f3b8c99a2946fb8db6777287e7ae6e#2699a16d674480bdb716d7a4ce8f6b5b" },
+      { num: 2, text: "Instalar o Master Remote no cliente", manual: "https://gr7autocom.notion.site/INSTALANDO-REMOTE-NO-CLIENTE-E-ADICIONANDO-AO-CONTROL-2659a16d674481069e5df972792afa0e" },
+      { num: 3, text: "Transferir arquivos GR7 pelo Master", manual: "https://gr7autocom.notion.site/INSTALANDO-SERVIDOR-GR7-MYSQL-31f3b8c99a2946fb8db6777287e7ae6e#2699a16d6744808b8c38d7791241ade3" },
+      { num: "Extra", text: "Otimização do Windows para Uso do Sistema GR7", manual: "https://gr7autocom.notion.site/CONFIGURANDO-WINDOWS-PARA-O-USUARIO-2689a16d674480c08d43c5867b2177dc", extra: true },
+      { num: 4, text: "Ajustes rápidos no Windows", manual: "https://gr7autocom.notion.site/INSTALANDO-SERVIDOR-GR7-MYSQL-31f3b8c99a2946fb8db6777287e7ae6e#2699a16d67448085bbfef928d9f39a9a" },
+      { num: 5, text: "Pastas na Área de Trabalho", manual: "https://gr7autocom.notion.site/INSTALANDO-SERVIDOR-GR7-MYSQL-31f3b8c99a2946fb8db6777287e7ae6e#2699a16d6744800790e2d496e564ada0" },
+      { num: 6, text: "(Se possível) Renomear o computador", manual: "https://gr7autocom.notion.site/INSTALANDO-SERVIDOR-GR7-MYSQL-31f3b8c99a2946fb8db6777287e7ae6e#2699a16d674480c393c1e8ad3b8580e6" },
+      { num: 7, text: "Compartilhamento de redes do Windows", manual: "https://gr7autocom.notion.site/INSTALANDO-SERVIDOR-GR7-MYSQL-31f3b8c99a2946fb8db6777287e7ae6e#2699a16d674480ee8ff6cf2becf374f8" },
+      { num: 8, text: "Fixar pastas no Acesso Rápido", manual: "https://gr7autocom.notion.site/INSTALANDO-SERVIDOR-GR7-MYSQL-31f3b8c99a2946fb8db6777287e7ae6e#2699a16d6744807bb47fdb698a6bb6b9" },
+      { num: 9, text: "(Se dedicado) Instalar WASSetup (Wise Auto Shutdown)", manual: "https://gr7autocom.notion.site/INSTALANDO-SERVIDOR-GR7-MYSQL-31f3b8c99a2946fb8db6777287e7ae6e#2699a16d6744805fb740f32f1f828e9d" },
+      { num: 10, text: "Instalar e definir Notepad++", manual: "https://gr7autocom.notion.site/INSTALANDO-SERVIDOR-GR7-MYSQL-31f3b8c99a2946fb8db6777287e7ae6e#2699a16d674480f1acaec0f3fddae730" },
+      { num: 11, text: "Instalar a fonte dos relatórios", manual: "https://gr7autocom.notion.site/INSTALANDO-SERVIDOR-GR7-MYSQL-31f3b8c99a2946fb8db6777287e7ae6e?pvs=97#2699a16d67448067b3eaef32c6975911" },
+      { num: 12, text: "Copiar o registro do cliente", manual: "https://gr7autocom.notion.site/INSTALANDO-SERVIDOR-GR7-MYSQL-31f3b8c99a2946fb8db6777287e7ae6e#2699a16d6744802b8643e06706c62a19" },
+      { num: "13a", text: "Instalar e configurar o MySQL 5.7", manual: "https://gr7autocom.notion.site/INSTALANDO-E-CONFIGURANDO-O-MYSQL-SERVER-5-7-38-a125c940921143429f7c5b25d5cfdab9" },
+      { num: "13b", text: "Configuração MySQL Server / My.ini", manual: "https://gr7autocom.notion.site/CONFIGURA-O-MYSQL-SERVER-MY-INI-2659a16d67448053b567d2673f45d5f8" },
+      { num: "13c", text: "Instalar e configurar o MySQL Administrator", manual: "https://gr7autocom.notion.site/INSTALANDO-E-CONFIGURANDO-O-MYSQL-ADMINISTRATOR-4de01b2e6580441098c482691842f347" },
+      { num: "13d", text: "Instalar e configurar o MySQL Manager 2007", manual: "https://gr7autocom.notion.site/INSTALANDO-E-CONFIGURANDO-O-MYSQL-MANAGER-2007-c4ee483a15774877875a370be49cb784" },
+      { num: 14, text: "Restaurar a base no Administrator", manual: "https://gr7autocom.notion.site/INSTALANDO-SERVIDOR-GR7-MYSQL-31f3b8c99a2946fb8db6777287e7ae6e#2699a16d67448080873ef00890f2343f" },
+      { num: "??", text: "Restaurar as bases em ordem", manual: "https://gr7autocom.notion.site/INSTALANDO-SERVIDOR-GR7-MYSQL-31f3b8c99a2946fb8db6777287e7ae6e?pvs=97#27d9a16d6744808894b2f569143defb3" },
+      { num: 15, text: "Compartilhar pastas do servidor", manual: "https://gr7autocom.notion.site/INSTALANDO-SERVIDOR-GR7-MYSQL-31f3b8c99a2946fb8db6777287e7ae6e#2699a16d674480bf9dd7dc3db6e2aa77" },
+      { num: 16, text: "Ajustar Demo.ini e config.ini", manual: "https://gr7autocom.notion.site/INSTALANDO-SERVIDOR-GR7-MYSQL-31f3b8c99a2946fb8db6777287e7ae6e#2699a16d67448086859fc99e61ee26e5" },
+      { num: 17, text: "Criar atalhos GR7 e organizar", manual: "https://gr7autocom.notion.site/INSTALANDO-SERVIDOR-GR7-MYSQL-31f3b8c99a2946fb8db6777287e7ae6e#2699a16d67448065bcefd02e8da923c0" },
+      { num: 18, text: "Configurar diretórios no Retaguarda", manual: "https://gr7autocom.notion.site/INSTALANDO-SERVIDOR-GR7-MYSQL-31f3b8c99a2946fb8db6777287e7ae6e#2699a16d67448025841af612a7ce3124" },
+      { num: 19, text: "Rodar o ATUALIZA GR7", manual: "https://gr7autocom.notion.site/INSTALANDO-SERVIDOR-GR7-MYSQL-31f3b8c99a2946fb8db6777287e7ae6e#2699a16d674480648992c41cd28ced47" },
+      { num: 20, text: "Configurar o Verificador GR7 na inicialização", manual: "https://gr7autocom.notion.site/INSTALANDO-SERVIDOR-GR7-MYSQL-31f3b8c99a2946fb8db6777287e7ae6e#2699a16d6744809e911fcea916537e40" },
+      { num: 21, text: "Instalando WebCharts e ServerMobile como serviço", manual: "https://gr7autocom.notion.site/INSTALANDO-WEBCHARTS-E-SERVERMOBILE-COMO-SERVI-O-1389a16d674480f08f6bfcdea16bb71d" },
+      { num: 22, text: "Criando e Configurando Rotina de Backup MySQL", manual: "https://gr7autocom.notion.site/CRIANDO-E-CONFIGURANDO-ROTINA-DE-BACKUP-MYSQL-2699a16d674480b284b6f9c0c8b64a22" },
+      { num: 23, text: "Criar exceções no Windows Defender (Executar BAT no Tutorial abaixo)", manual: "https://gr7autocom.notion.site/CRIAR-EXCE-ES-NO-WINDOWS-DEFENDER-2809a16d674480c0a7fbf1353b1b6aa1" },
+    ];
 
-  // ── 2. Resumo geral (vw_resumo_geral)
-  try{
-    var resumoArr=await dbGet('vw_resumo_geral');
-    var r=resumoArr[0]||{};
-    document.getElementById('sClientes').textContent = r.total_clientes||0;
-    document.getElementById('sDone').textContent     = r.projetos_concluidos!=null ? r.projetos_concluidos : (r.total_concluidos||0);
-    document.getElementById('sMedia').textContent    = r.projetos_andamento!=null  ? r.projetos_andamento  : (r.total_pendentes||0);
-    document.getElementById('sPend').textContent     = r.percentual_conclusao!=null? (r.percentual_conclusao+'%') : ((r.percentual_geral||0)+'%');
-    document.getElementById('totalClientes').textContent=(r.total_clientes||0)+' registros';
-  }catch(e){
-    console.error('vw_resumo_geral:',e);
-    ['sClientes','sDone','sMedia','sPend'].forEach(function(id){document.getElementById(id).textContent='ERR';});
-  }
+    const retaguardaSteps = [
+      { num: 1, text: "Preparar acesso pelo AnyDesk", manual: "https://gr7autocom.notion.site/INSTALANDO-RETAGUARDA-GR7-8ac205a8fab74a6682cccb3c1ea8de5b#26a9a16d674480178a79fdd8401b3027" },
+      { num: 2, text: "Instalar o Master Remote no cliente", manual: "https://gr7autocom.notion.site/INSTALANDO-REMOTE-NO-CLIENTE-E-ADICIONANDO-AO-CONTROL-2659a16d674481069e5df972792afa0e" },
+      { num: 3, text: "Transferir arquivos GR7 pelo Master", manual: "https://gr7autocom.notion.site/INSTALANDO-RETAGUARDA-GR7-8ac205a8fab74a6682cccb3c1ea8de5b#26a9a16d6744807fa3cffc97531bd8df" },
+      { num: "Extra", text: "Otimização do Windows para Uso do Sistema GR7", manual: "https://gr7autocom.notion.site/CONFIGURANDO-WINDOWS-PARA-O-USUARIO-2689a16d674480c08d43c5867b2177dc", extra: true },
+      { num: 4, text: "Ajustes rápidos no Windows", manual: "https://gr7autocom.notion.site/INSTALANDO-RETAGUARDA-GR7-8ac205a8fab74a6682cccb3c1ea8de5b#26a9a16d67448052adb4ebe04c134262" },
+      { num: 5, text: "Pastas na Área de Trabalho", manual: "https://gr7autocom.notion.site/INSTALANDO-RETAGUARDA-GR7-8ac205a8fab74a6682cccb3c1ea8de5b#26a9a16d6744800587a5c44f8db0f085" },
+      { num: 6, text: "(Se possível) Renomear o computador", manual: "https://gr7autocom.notion.site/INSTALANDO-RETAGUARDA-GR7-8ac205a8fab74a6682cccb3c1ea8de5b#26a9a16d674480d19123fe57b8703144" },
+      { num: 7, text: "Compartilhamento de redes do Windows", manual: "https://gr7autocom.notion.site/INSTALANDO-RETAGUARDA-GR7-8ac205a8fab74a6682cccb3c1ea8de5b#26a9a16d6744803ba6e8effb3970d0f2" },
+      { num: 8, text: "Fixar pastas no Acesso Rápido", manual: "https://gr7autocom.notion.site/INSTALANDO-RETAGUARDA-GR7-8ac205a8fab74a6682cccb3c1ea8de5b#26a9a16d674480eb901dcd4a3d32f02c" },
+      { num: 9, text: "Instalar a fonte dos relatórios", manual: "https://gr7autocom.notion.site/INSTALANDO-RETAGUARDA-GR7-8ac205a8fab74a6682cccb3c1ea8de5b#26a9a16d674480928a08e13c773bf520" },
+      { num: 10, text: "Atualizar Registro e colocar no Servidor", manual: "https://gr7autocom.notion.site/INSTALANDO-RETAGUARDA-GR7-8ac205a8fab74a6682cccb3c1ea8de5b#26a9a16d67448056a7e7c962d4946609" },
+      { num: 11, text: "Instalar MySQL Manager", manual: "https://www.notion.so/INSTALANDO-E-CONFIGURANDO-O-MYSQL-MANAGER-2007-c4ee483a15774877875a370be49cb784?pvs=21" },
+      { num: 12, text: "Ajustar Demo.ini e config.ini", manual: "https://gr7autocom.notion.site/INSTALANDO-RETAGUARDA-GR7-8ac205a8fab74a6682cccb3c1ea8de5b?pvs=97#26a9a16d6744801cb6fac09b5c6c72ae" },
+      { num: 13, text: "Criar atalhos GR7 e organizar", manual: "https://gr7autocom.notion.site/INSTALANDO-RETAGUARDA-GR7-8ac205a8fab74a6682cccb3c1ea8de5b#26a9a16d67448042b1e4c03012197f63" },
+      { num: 14, text: "Rodar o ATUALIZA GR7", manual: "https://gr7autocom.notion.site/INSTALANDO-RETAGUARDA-GR7-8ac205a8fab74a6682cccb3c1ea8de5b?pvs=97#26a9a16d6744803e90a3f3f2927e3180" },
+      { num: 15, text: "Configurar o ATUALIZA GR7 na inicialização", manual: "https://gr7autocom.notion.site/INSTALANDO-RETAGUARDA-GR7-8ac205a8fab74a6682cccb3c1ea8de5b#26a9a16d6744809eaa5bfc5498c29d64" },
+      { num: 16, text: "Permissão para acessar rede compartilhada / Credenciais do Windows", manual: "https://gr7autocom.notion.site/PERMISS-O-PARA-ACESSAR-REDE-COMPARTILHADA-CREDENCIAIS-DO-WINDOWS-27e9a16d67448008a4b1fbccf7423f17" },
+      { num: 17, text: "Configurando periféricos no Sistema GR7 (Caso tenha Impressora/Etiqueta)", manual: "https://gr7autocom.notion.site/CONFIGURANDO-PERIFERICOS-NO-SISTEMA-GR7-2699a16d6744806eb63cff2b84c2cd7e" },
+      { num: 18, text: "Criar exceções no Windows Defender", manual: "https://gr7autocom.notion.site/CRIAR-EXCE-ES-NO-WINDOWS-DEFENDER-2809a16d674480c0a7fbf1353b1b6aa1" },
+    ];
 
-  // ── 3. Ranking + Cards (vw_ranking_colaboradores)
-  try{
-    var rankingArr=await dbGet('vw_ranking_colaboradores');
-    var byUser={};
-    USERS.forEach(function(u){byUser[u.key]={label:u.label,color:u.color,concluidos:0,andamento:0,clientes:new Set(),groups:{servidor:0,retaguarda:0,nfce:0},clientesData:[]};});
+    const nfceSteps = [
+      { num: 1, text: "Preparar acesso pelo AnyDesk", manual: "https://gr7autocom.notion.site/INSTALANDO-FRENTE-DE-CAIXA-GR7-6cae4ac927b345888ecb61eab9b16497#26a9a16d67448056bd9cccf8e9d2f691" },
+      { num: 2, text: "Instalar o Master Remote no cliente", manual: "https://gr7autocom.notion.site/INSTALANDO-REMOTE-NO-CLIENTE-E-ADICIONANDO-AO-CONTROL-2659a16d674481069e5df972792afa0e" },
+      { num: 3, text: "Transferir arquivos GR7 pelo Master", manual: "https://gr7autocom.notion.site/INSTALANDO-FRENTE-DE-CAIXA-GR7-6cae4ac927b345888ecb61eab9b16497#26a9a16d6744803dada5d076fb6ac295" },
+      { num: "Extra", text: "Otimização do Windows para Uso do Sistema GR7", manual: "https://gr7autocom.notion.site/CONFIGURANDO-WINDOWS-PARA-O-USUARIO-2689a16d674480c08d43c5867b2177dc", extra: true },
+      { num: 4, text: "Ajustes rápidos no Windows", manual: "https://gr7autocom.notion.site/INSTALANDO-FRENTE-DE-CAIXA-GR7-6cae4ac927b345888ecb61eab9b16497#26a9a16d67448017a540d6796c95f95e" },
+      { num: 5, text: "Pastas na Área de Trabalho", manual: "https://gr7autocom.notion.site/INSTALANDO-FRENTE-DE-CAIXA-GR7-6cae4ac927b345888ecb61eab9b16497#26a9a16d674480b493b6e55c05001f42" },
+      { num: 6, text: "(Se possível) Renomear o computador", manual: "https://gr7autocom.notion.site/INSTALANDO-FRENTE-DE-CAIXA-GR7-6cae4ac927b345888ecb61eab9b16497#26a9a16d67448031a488cf28707c1eda" },
+      { num: 7, text: "Compartilhamento de redes do Windows", manual: "https://gr7autocom.notion.site/INSTALANDO-FRENTE-DE-CAIXA-GR7-6cae4ac927b345888ecb61eab9b16497#26a9a16d67448033848adb5c79fedf05" },
+      { num: 8, text: "Fixar pastas no Acesso Rápido", manual: "https://gr7autocom.notion.site/INSTALANDO-FRENTE-DE-CAIXA-GR7-6cae4ac927b345888ecb61eab9b16497?pvs=97#26a9a16d674480b980a0df9fce9b96f6" },
+      { num: 9, text: "Atualizar Registro e colocar no Servidor", manual: "https://gr7autocom.notion.site/INSTALANDO-FRENTE-DE-CAIXA-GR7-6cae4ac927b345888ecb61eab9b16497?pvs=97#26a9a16d674480579240f028f87242ea" },
+      { num: "10a", text: "Instalar e configurar o MySQL 5.7", manual: "https://gr7autocom.notion.site/INSTALANDO-E-CONFIGURANDO-O-MYSQL-SERVER-5-7-38-a125c940921143429f7c5b25d5cfdab9" },
+      { num: "10b", text: "Configuração MySQL Server / My.ini", manual: "https://gr7autocom.notion.site/CONFIGURA-O-MYSQL-SERVER-MY-INI-2659a16d67448053b567d2673f45d5f8" },
+      { num: "10c", text: "Instalar e configurar o MySQL Administrator", manual: "https://gr7autocom.notion.site/INSTALANDO-E-CONFIGURANDO-O-MYSQL-ADMINISTRATOR-4de01b2e6580441098c482691842f347" },
+      { num: "10d", text: "Instalar e configurar o MySQL Manager 2007", manual: "https://gr7autocom.notion.site/INSTALANDO-E-CONFIGURANDO-O-MYSQL-MANAGER-2007-c4ee483a15774877875a370be49cb784" },
+      { num: 11, text: "Restaurar a base no Administrator", manual: "https://gr7autocom.notion.site/INSTALANDO-FRENTE-DE-CAIXA-GR7-6cae4ac927b345888ecb61eab9b16497#26a9a16d67448030bcfdc5c1c8367c99" },
+      { num: 12, text: "Ajustar Demo.ini e config.ini", manual: "https://gr7autocom.notion.site/INSTALANDO-FRENTE-DE-CAIXA-GR7-6cae4ac927b345888ecb61eab9b16497#26a9a16d674480dd8e62e28be4d9bb54" },
+      { num: 13, text: "Criar atalhos GR7 e organizar", manual: "https://gr7autocom.notion.site/INSTALANDO-FRENTE-DE-CAIXA-GR7-6cae4ac927b345888ecb61eab9b16497#26a9a16d674480f09e2dea6378df59a2" },
+      { num: "14a", text: "Rodar o ATUALIZA GR7", manual: "https://gr7autocom.notion.site/INSTALANDO-FRENTE-DE-CAIXA-GR7-6cae4ac927b345888ecb61eab9b16497?pvs=97#26b9a16d674480d38a7ae23f70954fc9" },
+      { num: "14b", text: "Permissão para acessar rede compartilhada / Credenciais do Windows", manual: "https://gr7autocom.notion.site/PERMISS-O-PARA-ACESSAR-REDE-COMPARTILHADA-CREDENCIAIS-DO-WINDOWS-27e9a16d67448008a4b1fbccf7423f17" },
+      { num: 15, text: "Configurar o ATUALIZA GR7 na inicialização", manual: "https://gr7autocom.notion.site/INSTALANDO-FRENTE-DE-CAIXA-GR7-6cae4ac927b345888ecb61eab9b16497#2b59a16d6744805db5dbe4bcf72e6e2b" },
+      { num: 16, text: "Configurando periféricos no Sistema GR7 (Caso tenha Impressora/Balança)", manual: "https://gr7autocom.notion.site/CONFIGURANDO-PERIFERICOS-NO-SISTEMA-GR7-2699a16d6744806eb63cff2b84c2cd7e" },
+      { num: 17, text: "Instalando fonte para relatório (Caso vá usar Retaguarda)", manual: "https://gr7autocom.notion.site/INSTALANDO-FONTE-PARA-RELAT-RIO-27e9a16d6744800aad99f4fffd8385b1" },
+      { num: 18, text: "Criar exceções no Windows Defender", manual: "https://gr7autocom.notion.site/CRIAR-EXCE-ES-NO-WINDOWS-DEFENDER-2809a16d674480c0a7fbf1353b1b6aa1" },
+    ];
 
-    rankingArr.forEach(function(row){
-      var u=matchUser(row.colaborador);if(!u)return;
-      byUser[u.key].concluidos = row.projetos_concluidos!=null ? row.projetos_concluidos : (row.total_concluidos||0);
-      byUser[u.key].andamento  = row.projetos_andamento!=null  ? row.projetos_andamento  : 0;
-      byUser[u.key].groups={servidor:row.servidor||0,retaguarda:row.retaguarda||0,nfce:row.nfce||0};
-    });
+    // ------------------------------------------
+    //  STATE
+    // ------------------------------------------
+    let clientData = {};
+    let selectedType = 'Servidor';
+    let currentTab = 'servidor';
+    let currentClientId = null;    // UUID do cliente no Supabase
+    let allClients = [];        // cache da lista de clientes
+    let saveDebounce = null;
+    let currentUserName = localStorage.getItem('gr7_current_user') || '';
+    let pendingResumeResponsible = '';
 
-    var cliMap={};clientes.forEach(function(c){cliMap[c.id]=c;});
-    clientes.forEach(function(c){var u=matchUser(c.funcionario);if(u)byUser[u.key].clientes.add(c.id);});
-    USERS.forEach(function(u){byUser[u.key].clientesData=[...byUser[u.key].clientes].map(function(id){return cliMap[id];}).filter(Boolean);});
+    // ------------------------------------------
+    //  CARREGAR COLABORADORES DO SUPABASE
+    // ------------------------------------------
+    async function loadColaboradores() {
+      try {
+        const r = await fetch(SUPABASE_URL + '/rest/v1/colaboradores?order=nome&ativo=eq.true', { headers: HEADERS });
+        if (!r.ok) throw new Error(await r.text());
+        const colaboradores = await r.json();
 
-    renderRanking(byUser);
-    renderCards(byUser);
-  }catch(e){
-    console.error('vw_ranking_colaboradores:',e);
-    var msg='<div style="padding:20px;color:#f87171;font-size:13px">❌ Erro no ranking:<br><code style="font-size:11px">'+e.message+'</code></div>';
-    document.getElementById('rankingBody').innerHTML=msg;
-    document.getElementById('cardsGrid').innerHTML='<div style="grid-column:1/-1;padding:20px;color:#f87171;font-size:13px">❌ Erro nos cards:<br><code style="font-size:11px">'+e.message+'</code></div>';
-  }
+        const makeOptions = (selectId, selectedName) => {
+          const sel = document.getElementById(selectId);
+          if (!sel) return;
+          sel.innerHTML = '<option value="">— Selecione o responsável —</option>'
+            + colaboradores.map(c =>
+                `<option value="${c.nome}"${c.nome === selectedName ? ' selected' : ''}>${c.nome}${c.cargo ? ' — ' + c.cargo : ''}</option>`
+              ).join('');
+          // habilita botão continuar se já tem seleção (whoName)
+          if (selectId === 'whoName') {
+            const btn = document.getElementById('whoContinue');
+            if (btn) btn.disabled = !sel.value;
+            sel.addEventListener('change', () => { if (btn) btn.disabled = !sel.value; });
+          }
+        };
 
-  document.getElementById('syncChip').textContent='✓ Atualizado';
-  setTimeout(function(){document.getElementById('syncChip').textContent='↻ Atualizar';},3000);
-}
+        makeOptions('clientEmployee', currentUserName);
+        makeOptions('whoName', currentUserName);
 
-function openChecklist(userName){
-  localStorage.setItem('gr7_current_user', userName);
-  window.open('Checklist.html', '_blank');
-}
+      } catch(e) {
+        console.error('Erro ao carregar colaboradores:', e);
+        // fallback: input de texto
+        ['clientEmployee', 'whoName'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el && el.tagName === 'SELECT') {
+            el.innerHTML = '<option value="">Erro ao carregar</option>';
+          }
+        });
+      }
+    }
 
-async function loadAll(){
-  // Substitui spinners imediatamente — nunca fica preso em "Carregando..."
-  var loadMsg='<div style="padding:16px;color:#555;font-size:13px">⏳ Buscando dados…</div>';
-  ['usersList','clientesBody','rankingBody'].forEach(function(id){
-    var el=document.getElementById(id);
-    if(el) el.innerHTML=loadMsg;
-  });
-  var cg=document.getElementById('cardsGrid');
-  if(cg) cg.innerHTML='<div style="grid-column:1/-1;'+loadMsg.slice(5);
+    function updateCurrentUserUI() {
+      const el = document.getElementById('currentUserName');
+      if (el) el.textContent = currentUserName || '—';
+    }
 
-  // Timeout de segurança: se demorar >10s mostra diagnóstico
-  var safetyTimer=setTimeout(function(){
-    ['usersList','clientesBody','rankingBody'].forEach(function(id){
-      var el=document.getElementById(id);
-      if(el && el.innerHTML.includes('Buscando dados'))
-        el.innerHTML='<div style="padding:16px;color:#f87171;font-size:13px">⚠️ Tempo esgotado — verifique conexão ou execute o SQL das views no Supabase.<br><br>'
-          +'<small style="color:#888">URL: '+SURL+'<br>Execute: <code>gr7_corrigir_logica.sql</code> no Supabase SQL Editor</small></div>';
-    });
-  }, 10000);
+    function setCurrentUserName(name) {
+      currentUserName = (name || '').trim();
+      localStorage.setItem('gr7_current_user', currentUserName);
+      updateCurrentUserUI();
+    }
 
-  try{
-    await loadUsers();
-    await loadDashboard();
-  }finally{
-    clearTimeout(safetyTimer);
-  }
-}
+    function requestResponsibleForRetomar() {
+      return new Promise(resolve => {
+        const overlay = document.getElementById('whoOverlay');
+        const select  = document.getElementById('whoName');
+        const btnCancel   = document.getElementById('whoCancel');
+        const btnContinue = document.getElementById('whoContinue');
 
-function renderClientes(list){
-  var tColor={servidor:'#818cf8',retaguarda:'#38bdf8',nfce:'#00e5a0'};
-  var tLabel={servidor:'🖥 Servidor',retaguarda:'🗄️ Retaguarda',nfce:'🧾 NFCe'};
-  var head='<div class="cl-row cl-head"><div>Cliente</div><div>Tipo</div><div>Progresso</div><div>Responsável</div><div>Data</div></div>';
-  var rows=list.map(function(c){
-    var t=(c.tipo||'').toLowerCase();
-    var tip=t.includes('retaguarda')?'retaguarda':t.includes('nfce')?'nfce':'servidor';
-    var pct=c.percentual||0;
-    return '<div class="cl-row"><div class="cl-name">'+(c.nome||'—')+'</div>'
-      +'<div><span class="cl-badge '+tip+'">'+tLabel[tip]+'</span></div>'
-      +'<div class="cl-prog"><div class="mini-track"><div class="mini-fill" style="width:'+pct+'%;background:'+tColor[tip]+'"></div></div><span class="mini-pct">'+pct+'%</span></div>'
-      +'<div class="cl-func">'+(c.funcionario||'—')+'</div>'
-      +'<div class="cl-date">'+fmtDate(c.data||c.criado_em)+'</div></div>';
-  }).join('');
-  document.getElementById('clientesBody').innerHTML=head+rows;
-}
+        // Pré-seleciona o usuário atual
+        if (select) {
+          select.value = currentUserName || '';
+          btnContinue.disabled = !select.value;
+          select.onchange = () => { btnContinue.disabled = !select.value; };
+        }
 
-function renderRanking(byUser){
-  var sorted=Object.values(byUser).sort(function(a,b){return b.concluidos-a.concluidos;});
-  var max=sorted[0]?sorted[0].concluidos:1;if(!max)max=1;
-  document.getElementById('rankingBody').innerHTML=sorted.map(function(u,i){
-    return '<div class="rk-row">'
-      +'<div class="rk-pos" style="color:'+u.color+'">'+(RANKS[i]||i+1+'°')+'</div>'
-      +'<div class="rk-av" style="background:'+u.color+'22;color:'+u.color+'">'+initials(u.label)+'</div>'
-      +'<div class="rk-name">'+u.label+'</div>'
-      +'<div class="rk-bar-wrap"><div class="rk-bar" style="width:'+Math.round(u.concluidos/max*100)+'%;background:'+u.color+'"></div></div>'
-      +'<div class="rk-pct" style="color:'+u.color+'">'+u.concluidos+'</div>'
-      +'<div class="rk-tasks">'+u.clientes.size+' projetos</div></div>';
-  }).join('');
-}
+        overlay.classList.add('active');
+        overlay.setAttribute('aria-hidden', 'false');
 
-function renderCards(byUser){
-  if(!USERS.length){
-    document.getElementById('cardsGrid').innerHTML='<div class="loader" style="grid-column:1/-1;color:var(--muted)">Cadastre colaboradores para ver os cards 👥</div>';
-    return;
-  }
-  var maxConc=Math.max.apply(null,Object.values(byUser).map(function(u){return u.concluidos;}).concat([1]));
-  var gLabels={servidor:'🖥 Servidor',retaguarda:'🗄️ Retaguarda',nfce:'🧾 NFCe'};
-  var gColors={servidor:'var(--c0)',retaguarda:'var(--c1)',nfce:'var(--green)'};
-  document.getElementById('cardsGrid').innerHTML=USERS.map(function(u){
-    var d=byUser[u.key]||{concluidos:0,andamento:0,clientes:new Set(),groups:{servidor:0,retaguarda:0,nfce:0},clientesData:[]};
-    var nTotal=d.clientes.size;
-    var pct=maxConc?Math.round(d.concluidos/maxConc*100):0;
-    var bd=badge(pct);
-    var maxG=Math.max.apply(null,Object.values(d.groups).concat([1]));
-    var gBars=Object.entries(d.groups).map(function(e){var g=e[0],v=e[1];
-      return '<div class="ugroup-row"><span class="ugroup-lbl">'+gLabels[g]+'</span>'
-        +'<div class="ugroup-track"><div class="ugroup-fill" style="width:'+Math.round(v/maxG*100)+'%;background:'+gColors[g]+'"></div></div>'
-        +'<span class="ugroup-pct" style="color:'+gColors[g]+'">'+v+'</span></div>';
-    }).join('');
-    var cliList=d.clientesData.slice(0,6).map(function(c){
-      var isConc=(c.percentual||0)>=100;
-      return '<div class="ucli-item"><span class="ucli-name">'+(c.nome||'—')+'</span>'
-        +'<span class="ucli-pct" style="color:'+(isConc?'var(--green)':'var(--c3)')+'">'+(isConc?'✅ Concluído':'⏳ '+(c.percentual||0)+'%')+'</span></div>';
-    }).join('');
-    return '<div class="ucard">'
-      +'<div class="ucard-top">'
-        +'<div class="av" style="background:'+u.color+'22;color:'+u.color+'">'+initials(u.label)+'</div>'
-        +'<div class="uinfo"><div class="uname">'+u.label+'</div><div class="ubadge '+bd.cls+'">'+bd.lbl+'</div></div>'
-        +'<div class="uscore" style="color:'+u.color+'">'+d.concluidos+'<small>PROJETOS FEITOS</small></div>'
-      +'</div>'
-      +'<div class="uprog"><div class="uprog-meta"><span class="uprog-lbl">vs. mais produtivo</span><span class="uprog-n" style="color:'+u.color+'">'+nTotal+' projeto'+(nTotal!==1?'s':'')+'</span></div>'
-        +'<div class="ptrack"><div class="pfill" style="width:'+pct+'%;background:linear-gradient(90deg,'+u.color+'88,'+u.color+')"></div></div></div>'
-      +'<div class="ustats">'
-        +'<div class="ustat"><div class="ustat-n" style="color:var(--green)">'+d.concluidos+'</div><div class="ustat-l">CONCLUÍDOS</div></div>'
-        +'<div class="ustat"><div class="ustat-n" style="color:var(--c3)">'+d.andamento+'</div><div class="ustat-l">EM ABERTO</div></div>'
-        +'<div class="ustat"><div class="ustat-n" style="color:var(--c1)">'+nTotal+'</div><div class="ustat-l">TOTAL</div></div>'
-      +'</div>'
-      +'<div class="ugroups">'+gBars+'</div>'
-      +(cliList?'<div class="ucli"><button class="ucli-btn" onclick="toggleCli(this)"><span>📂 Projetos ('+nTotal+')</span><span>▾</span></button><div class="ucli-list">'+cliList+'</div></div>':'')
-      +'<button class="open-checklist-btn" style="color:'+u.color+';border-color:'+u.color+'44;background:'+u.color+'11" onclick="openChecklist(this.dataset.user)" data-user="'+u.label+'">📋 Abrir Checklist como '+u.label+'</button>'
-      +'</div>';
-  }).join('');
-}
+        const cleanup = () => {
+          overlay.classList.remove('active');
+          overlay.setAttribute('aria-hidden', 'true');
+          btnCancel.removeEventListener('click', onCancel);
+          btnContinue.removeEventListener('click', onContinue);
+        };
 
-function toggleCli(btn){var l=btn.nextElementSibling;l.classList.toggle('open');btn.querySelector('span:last-child').textContent=l.classList.contains('open')?'▴':'▾';}
+        const onCancel = () => { cleanup(); resolve(currentUserName || ''); };
+        const onContinue = () => {
+          const name = select ? select.value.trim() : '';
+          if (!name) return;
+          cleanup();
+          resolve(name);
+        };
 
-document.getElementById('dateChip').textContent=new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'});
-loadAll();
-setInterval(loadAll,60000);
+        btnCancel.addEventListener('click', onCancel);
+        btnContinue.addEventListener('click', onContinue);
+      });
+    }
 
-</script>
+    function localMetaKey() {
+      return 'gr7_progress_meta';
+    }
+
+    function getLocalMeta() {
+      try {
+        const j = localStorage.getItem(localMetaKey());
+        return j ? JSON.parse(j) : {};
+      } catch {
+        return {};
+      }
+    }
+
+    function saveLocalMeta(meta) {
+      localStorage.setItem(localMetaKey(), JSON.stringify(meta));
+    }
+
+    function setItemMeta(clientId, group, itemNum, data) {
+      const meta = getLocalMeta();
+      if (!meta[clientId]) meta[clientId] = {};
+      const key = `${group}:${itemNum}`;
+      if (data) meta[clientId][key] = data; else delete meta[clientId][key];
+      saveLocalMeta(meta);
+    }
+
+    function getItemMeta(clientId, group, itemNum) {
+      const meta = getLocalMeta();
+      const key = `${group}:${itemNum}`;
+      return (meta[clientId] && meta[clientId][key]) || null;
+    }
+
+    function updateItemBadge(el, name) {
+      const badge = el.querySelector('.item-resp-badge');
+      if (!badge) return;
+      if (name && name.trim()) {
+        badge.textContent = `👤 ${name.trim()}`;
+        badge.style.display = 'inline-flex';
+      } else {
+        badge.textContent = '';
+        badge.style.display = 'none';
+      }
+    }
+    // ------------------------------------------
+    //  TOAST
+    // ------------------------------------------
+    function showToast(msg, type = 'info', duration = 3000) {
+      const t = document.getElementById('toast');
+      t.className = 'toast ' + type;
+      t.innerHTML = (type === 'success' ? '✅ ' : type === 'error' ? '❌ ' : 'ℹ️ ') + msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), duration);
+    }
+
+    // ------------------------------------------
+    //  SAVE INDICATOR
+    // ------------------------------------------
+    function setSaveStatus(status) {
+      const el = document.getElementById('saveIndicator');
+      el.className = 'save-indicator ' + status;
+    }
+
+    // ------------------------------------------
+    //  MODAL TABS
+    // ------------------------------------------
+    async function showModalTab(tab) {
+      document.getElementById('tabNovoBtn').classList.toggle('active', tab === 'novo');
+      document.getElementById('tabRetomarBtn').classList.toggle('active', tab === 'retomar');
+      document.getElementById('sectionNovo').classList.toggle('active', tab === 'novo');
+      document.getElementById('sectionRetomar').classList.toggle('active', tab === 'retomar');
+      if (tab === 'retomar') {
+        loadClientsList();
+      }
+    }
+
+    function openModal() {
+      document.getElementById('modalOverlay').classList.add('active');
+      document.getElementById('btnCancelar').style.display = currentClientId ? 'block' : 'none';
+      document.getElementById('btnCriar').style.gridColumn = currentClientId ? '' : '1 / -1';
+      showModalTab('novo');
+    }
+
+    // ------------------------------------------
+    //  TIPO INSTALAÇÃO
+    // ------------------------------------------
+    function selectType(type) {
+      selectedType = type;
+      document.getElementById('btnServidor').classList.toggle('active', type === 'Servidor');
+      document.getElementById('btnRetaguarda').classList.toggle('active', type === 'Retaguarda');
+      document.getElementById('btnNFCe').classList.toggle('active', type === 'NFCe / Caixa');
+    }
+
+    function voltarDashboard() {
+      // Tenta fechar a aba (se foi aberta pelo dashboard)
+      // Se não conseguir, redireciona para index.html
+      if (window.opener && !window.opener.closed) {
+        window.close();
+      } else {
+        window.location.href = 'index.html';
+      }
+    }
+
+    function cancelModal() {
+      document.getElementById('modalOverlay').classList.remove('active');
+    }
+
+    // ------------------------------------------
+    //  CRIAR CLIENTE (salva no Supabase)
+    // ------------------------------------------
+    async function createClient() {
+      const btn = document.getElementById('btnCriar');
+      const name = document.getElementById('clientName').value.trim() || 'Cliente';
+      const date = document.getElementById('clientDate').value;
+      const pc = document.getElementById('clientPC').value.trim() || 'DESKTOP-XXXXXXX';
+      const emp = document.getElementById('clientEmployee').value.trim() || '—';
+
+      btn.disabled = true;
+      btn.innerHTML = '<div class="spinner"></div> Salvando...';
+
+      // Salvar no Supabase
+      const { data, error } = await dbInsert('clientes', {
+        nome: name, data: date || null, computador: pc, funcionario: emp, tipo: selectedType
+      });
+
+      if (error) {
+        showToast('Erro ao salvar cliente: ' + error.message, 'error');
+        btn.disabled = false;
+        btn.innerHTML = '? Criar e Iniciar Checklist';
+        return;
+      }
+
+      currentClientId = data.id;
+      clientData = { name, date, pc, emp, type: selectedType };
+      setCurrentUserName(emp);
+      applyClientUI();
+
+      document.getElementById('modalOverlay').classList.remove('active');
+      document.getElementById('app').classList.add('active');
+
+      buildLists();
+      switchToTypeTab(selectedType);
+      showToast('Cliente criado e sincronizado!', 'success');
+      setSaveStatus('saved');
+
+      btn.disabled = false;
+      btn.innerHTML = '? Criar e Iniciar Checklist';
+    }
+
+    function applyClientUI() {
+      document.getElementById('displayName').textContent = clientData.name;
+      document.getElementById('displayType').textContent = clientData.type;
+      document.getElementById('infoName').textContent = clientData.name;
+      document.getElementById('infoDate').textContent = clientData.date
+        ? new Date(clientData.date + 'T12:00:00').toLocaleDateString('pt-BR') : '—';
+      document.getElementById('infoPC').textContent = clientData.pc;
+      document.getElementById('infoEmployee').textContent = clientData.emp;
+    }
+
+    function switchToTypeTab(type) {
+      if (type === 'Retaguarda') switchTab('retaguarda');
+      else if (type === 'NFCe / Caixa') switchTab('nfce');
+      else switchTab('servidor');
+    }
+
+    // ------------------------------------------
+    //  LISTA DE CLIENTES EXISTENTES
+    // ------------------------------------------
+    async function loadClientsList() {
+      const container = document.getElementById('clientsList');
+      container.innerHTML = '<div class="clients-loading"><div class="spinner" style="margin:0 auto 10px"></div>Carregando...</div>';
+
+      const { data, error } = await dbSelect('clientes', {}, { order: 'criado_em.desc', limit: 50 });
+
+      if (error) {
+        container.innerHTML = '<div class="clients-empty">Erro ao carregar clientes.</div>';
+        return;
+      }
+
+      allClients = data || [];
+      renderClientsList(allClients);
+    }
+
+    function renderClientsList(list) {
+      const container = document.getElementById('clientsList');
+      if (!list.length) {
+        container.innerHTML = '<div class="clients-empty">Nenhum cliente encontrado.</div>';
+        return;
+      }
+
+      const typeIcons = { 'Servidor': '🖥️', 'Retaguarda': '🗄️', 'NFCe / Caixa': '🧾' };
+      container.innerHTML = '';
+      const ul = document.createElement('div');
+      ul.className = 'clients-list';
+
+      list.forEach(c => {
+        const row = document.createElement('div');
+        row.className = 'client-row';
+        const dateStr = c.data ? new Date(c.data + 'T12:00:00').toLocaleDateString('pt-BR') : '—';
+        row.innerHTML = `
+      <div class="client-row-info">
+        <div class="client-row-name">${c.nome}</div>
+        <div class="client-row-meta">
+          <span>📅 ${dateStr}</span>
+          <span>💻 ${c.computador || '—'}</span>
+          <span>👤 ${c.funcionario || '—'}</span>
+        </div>
+      </div>
+      <span class="client-row-badge">${typeIcons[c.tipo] || ''} ${c.tipo}</span>
+      <span class="client-row-arrow">›</span>
+    `;
+        row.onclick = () => resumeClient(c);
+        ul.appendChild(row);
+      });
+
+      container.appendChild(ul);
+    }
+
+    function filterClients(query) {
+      const q = query.toLowerCase();
+      const filtered = allClients.filter(c =>
+        c.nome.toLowerCase().includes(q) ||
+        (c.computador || '').toLowerCase().includes(q) ||
+        (c.funcionario || '').toLowerCase().includes(q)
+      );
+      renderClientsList(filtered);
+    }
+
+    // ------------------------------------------
+    //  RETOMAR CLIENTE EXISTENTE
+    // ------------------------------------------
+    async function resumeClient(c) {
+      // Pergunta quem é o técnico AGORA que escolheu a atividade
+      const name = await requestResponsibleForRetomar();
+      if (name && name.trim()) {
+        pendingResumeResponsible = name.trim();
+        setCurrentUserName(pendingResumeResponsible);
+      } else {
+        pendingResumeResponsible = '';
+      }
+
+      document.getElementById('clientsList').innerHTML =
+        '<div class="clients-loading"><div class="spinner" style="margin:0 auto 10px"></div>Carregando progresso...</div>';
+
+      currentClientId = c.id;
+      const novoResponsavel = (pendingResumeResponsible || currentUserName || c.funcionario || '—').trim() || '—';
+      setCurrentUserName(novoResponsavel);
+      clientData = { name: c.nome, date: c.data, pc: c.computador, emp: novoResponsavel, type: c.tipo };
+      selectedType = c.tipo;
+      pendingResumeResponsible = '';
+
+      applyClientUI();
+      document.getElementById('modalOverlay').classList.remove('active');
+      document.getElementById('app').classList.add('active');
+      buildLists();
+
+      if (novoResponsavel && novoResponsavel !== (c.funcionario || '—')) {
+        const { error } = await updateClientResponsavel(currentClientId, novoResponsavel);
+        if (error) showToast('Não foi possível atualizar responsável do cliente: ' + (error.message || 'Erro'), 'error');
+      }
+
+      // Carregar progresso salvo
+      const { data: progresso, error } = await dbSelect(
+        'checklist_progresso',
+        { cliente_id: currentClientId, concluido: true }
+      );
+
+      if (error) {
+        showToast('Erro ao carregar progresso: ' + error.message, 'error');
+      } else if (progresso && progresso.length > 0) {
+        progresso.forEach(p => {
+          const selectors = [
+            `#list-${p.grupo}-steps .check-item[data-num="${p.item_num}"]`,
+            `#list-${p.grupo} .check-item[data-num="${p.item_num}"]`
+          ];
+          selectors.forEach(sel => {
+            const el = document.querySelector(sel);
+            if (el) {
+              el.classList.add('done');
+              const by = p.marcado_por || (currentClientId ? getItemMeta(currentClientId, p.grupo, p.item_num)?.by : null);
+              if (by) updateItemBadge(el, by);
+              // Restaurar observação
+              if (p.observacao) {
+                const obsInput = el.querySelector('.obs-input');
+                const obsBtn   = el.querySelector('.obs-toggle-btn');
+                if (obsInput) obsInput.value = p.observacao;
+                if (obsBtn)   { obsBtn.classList.add('has-obs'); obsBtn.title = p.observacao; }
+              }
+            }
+          });
+        });
+        updateProgress('servidor');
+        updateProgress('retaguarda');
+        updateProgress('nfce');
+        showToast(`Progresso restaurado (${progresso.length} item${progresso.length > 1 ? 's' : ''})`, 'success');
+      } else {
+        showToast('Cliente carregado — sem progresso anterior', 'info');
+      }
+
+      setSaveStatus('saved');
+      switchToTypeTab(c.tipo);
+    }
+
+    // ------------------------------------------
+    //  BUILD LISTS
+    // ------------------------------------------
+    function buildLists() {
+      const sList = document.getElementById('list-servidor-steps');
+      sList.innerHTML = '';
+      servidorSteps.forEach(s => sList.appendChild(makeItem(s.num, s.text, s.manual || null, s.extra || false, 'servidor')));
+
+      const rList = document.getElementById('list-retaguarda');
+      rList.innerHTML = '';
+      retaguardaSteps.forEach(s => rList.appendChild(makeItem(s.num, s.text, s.manual || null, s.extra || false, 'retaguarda')));
+
+      const nList = document.getElementById('list-nfce');
+      nList.innerHTML = '';
+      nfceSteps.forEach(s => nList.appendChild(makeItem(s.num, s.text, s.manual || null, s.extra || false, 'nfce')));
+
+      updateProgress('servidor');
+      updateProgress('retaguarda');
+      updateProgress('nfce');
+
+      // Reaplicar badges do armazenamento local (caso a API não traga o responsável)
+      if (currentClientId) {
+        ['servidor', 'retaguarda', 'nfce'].forEach(group => {
+          document
+            .querySelectorAll(`#list-${group}-steps .check-item, #list-${group} .check-item`)
+            .forEach(el => {
+              const itemNum = el.dataset.num;
+              const meta = getItemMeta(currentClientId, group, itemNum);
+              if (meta && el.classList.contains('done')) {
+                updateItemBadge(el, meta.by);
+              }
+            });
+        });
+      }
+    }
+
+    function makeItem(num, text, manual, isExtra, group) {
+      const div = document.createElement('div');
+      div.className = 'check-item' + (isExtra ? ' extra-step' : '');
+      div.dataset.group = group;
+      div.dataset.num = String(num);
+      div.onclick = function (e) {
+        if (e.target.closest('.obs-area') || e.target.closest('.obs-toggle-btn')) return;
+        toggle(this);
+      };
+
+      div.innerHTML = `
+    <div class="check-box">✓</div>
+    <span class="item-number">${num}</span>
+    <div class="item-content">
+      <div class="item-text">${text}</div>
+    </div>
+    <div class="item-meta">
+      <span class="item-resp-badge" title="Marcado por"></span>
+      ${manual ? `<a class="item-manual" href="${manual}" target="_blank" onclick="event.stopPropagation()">📖 Manual</a>` : ''}
+      <button class="obs-toggle-btn" onclick="event.stopPropagation(); toggleObs(this)" title="Adicionar observação">💬 Obs</button>
+    </div>
+    <div class="obs-area">
+      <span class="obs-label">⚠️ Motivo:</span>
+      <textarea class="obs-input" rows="2" placeholder="Explique o motivo de não realizar esta etapa…" onclick="event.stopPropagation()"></textarea>
+      <button class="obs-save-btn" onclick="event.stopPropagation(); saveObs(this)">Salvar</button>
+      <span class="obs-saved-tag">✓ Salvo</span>
+    </div>
+  `;
+      return div;
+    }
+
+    function toggleObs(btn) {
+      const area = btn.closest('.check-item').querySelector('.obs-area');
+      area.classList.toggle('visible');
+      if (area.classList.contains('visible')) area.querySelector('.obs-input').focus();
+    }
+
+    async function saveObs(btn) {
+      const area   = btn.closest('.obs-area');
+      const item   = btn.closest('.check-item');
+      const input  = area.querySelector('.obs-input');
+      const tag    = area.querySelector('.obs-saved-tag');
+      const obsBtn = item.querySelector('.obs-toggle-btn');
+      const obs    = input.value.trim();
+      const group  = item.dataset.group || currentTab;
+      const itemNum = item.dataset.num;
+
+      if (!currentClientId) { showToast('Abra um cliente antes de salvar.', 'error'); return; }
+
+      btn.disabled = true;
+      btn.textContent = '…';
+
+      const { error } = await dbUpsert(
+        'checklist_progresso',
+        {
+          cliente_id: currentClientId,
+          grupo: group,
+          item_num: itemNum,
+          concluido: item.classList.contains('done'),
+          observacao: obs,
+          marcado_por: currentUserName || '—',
+          marcado_em: new Date().toISOString()
+        },
+        'cliente_id,grupo,item_num'
+      );
+
+      btn.disabled = false;
+      btn.textContent = 'Salvar';
+
+      if (error) {
+        showToast('Erro ao salvar obs: ' + error.message, 'error');
+      } else {
+        tag.classList.add('show');
+        setTimeout(() => tag.classList.remove('show'), 2500);
+        if (obs) { obsBtn.classList.add('has-obs'); obsBtn.title = obs; }
+        else     { obsBtn.classList.remove('has-obs'); obsBtn.title = 'Adicionar observação'; }
+        showToast('Observação salva!', 'success');
+      }
+    }
+
+    // ------------------------------------------
+    //  TOGGLE + SALVAR NO SUPABASE
+    // ------------------------------------------
+    async function toggle(el) {
+      el.classList.toggle('done');
+      const group = el.dataset.group || currentTab;
+      const itemNum = el.dataset.num;
+      const concluido = el.classList.contains('done');
+      const marcadoPor = currentUserName || clientData.emp || '—';
+      const marcadoEm = new Date().toISOString();
+
+      updateProgress(group);
+
+      if (!currentClientId) return;
+
+      setSaveStatus('saving');
+
+      // Atualiza badge e armazenamento local
+      if (concluido) {
+        updateItemBadge(el, marcadoPor);
+        setItemMeta(currentClientId, group, itemNum, { by: marcadoPor, at: marcadoEm });
+      } else {
+        updateItemBadge(el, '');
+        setItemMeta(currentClientId, group, itemNum, null);
+      }
+
+      // Tentativa 1: salvar com campos de autoria (se existir na tabela)
+      let { error } = await dbUpsert(
+        'checklist_progresso',
+        { cliente_id: currentClientId, grupo: group, item_num: itemNum, concluido, marcado_por: marcadoPor, marcado_em: marcadoEm },
+        'cliente_id,grupo,item_num'
+      );
+
+      // Fallback: caso a tabela não possua colunas de autoria
+      if (error) {
+        ({ error } = await dbUpsert(
+          'checklist_progresso',
+          { cliente_id: currentClientId, grupo: group, item_num: itemNum, concluido },
+          'cliente_id,grupo,item_num'
+        ));
+      }
+
+      if (error) {
+        setSaveStatus('error');
+        showToast('Erro ao salvar: ' + error.message, 'error');
+      } else {
+        setSaveStatus('saved');
+      }
+    }
+
+    // ------------------------------------------
+    //  PROGRESS
+    // ------------------------------------------
+    function updateProgress(group) {
+      const items = document.querySelectorAll(
+        `#list-${group}-steps .check-item, #list-${group} .check-item`
+      );
+      const total = items.length;
+      const done = [...items].filter(i => i.classList.contains('done')).length;
+      const pct = total ? Math.round((done / total) * 100) : 0;
+      document.getElementById(`prog-${group}`).style.width = pct + '%';
+      document.getElementById(`prog-${group}-text`).textContent = `${done}/${total} (${pct}%)`;
+    }
+
+    // ------------------------------------------
+    //  TABS
+    // ------------------------------------------
+    function switchTab(tab) {
+      currentTab = tab;
+      document.querySelectorAll('.tab').forEach((t, i) => {
+        t.classList.toggle('active', ['servidor', 'retaguarda', 'nfce'][i] === tab);
+      });
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.getElementById('panel-' + tab).classList.add('active');
+    }
+
+    // ------------------------------------------
+    //  INIT
+    // ------------------------------------------
+    document.getElementById('clientDate').valueAsDate = new Date();
+    updateCurrentUserUI();
+    loadColaboradores();
+  </script>
 </body>
+
 </html>
